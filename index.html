@@ -1,0 +1,2547 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地球小衛士：20格康樂棋大冒險 (小一常識共融版)</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 圓體/黑體確保小一學生易讀 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', 'PingFang HK', 'Microsoft JhengHei', sans-serif;
+            background-color: #F0F7F4;
+            color: #1E293B;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 康樂棋盤 5x4 (共20格) 大格高可視度網格設計 */
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
+            background: #CBD5E1;
+            padding: 14px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+        }
+
+        .board-cell {
+            min-height: 115px;
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            position: relative;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            border: 3px solid rgba(255, 255, 255, 0.85);
+        }
+
+        @media (max-width: 768px) {
+            .board-grid {
+                gap: 6px;
+                padding: 8px;
+            }
+            .board-cell {
+                min-height: 86px;
+                padding: 4px;
+                border-radius: 12px;
+            }
+        }
+
+        .board-cell.active-target {
+            transform: scale(1.06);
+            box-shadow: 0 0 0 5px #F59E0B;
+            z-index: 10;
+        }
+
+        /* 玩家棋子動畫（20格大棋盤專用加大棋子） */
+        .player-token {
+            width: 38px;
+            height: 38px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.28);
+            border: 3px solid #FFFFFF;
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @media (max-width: 768px) {
+            .player-token {
+                width: 28px;
+                height: 28px;
+                font-size: 16px;
+            }
+        }
+
+        /* 柔和脈衝特效（不刺眼，適合自閉症感官需求） */
+        @keyframes gentlePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+        }
+        .gentle-pulse {
+            animation: gentlePulse 2s infinite ease-in-out;
+        }
+
+        /* 骰子滾動柔和動畫 */
+        @keyframes diceRoll {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-12deg) scale(1.08); }
+            50% { transform: rotate(12deg) scale(1.08); }
+            75% { transform: rotate(-6deg) scale(1.04); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        .rolling {
+            animation: diceRoll 0.45s infinite;
+        }
+
+        /* 自訂捲軸 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #E2E8F0;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94A3B8;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- 頂部：標題與視覺日程流程欄 (SEN 結構化視覺提示) -->
+    <header class="bg-white border-b-4 border-emerald-200 shadow-sm sticky top-0 z-30 px-3 py-2">
+        <div class="max-w-7xl mx-auto flex flex-col xl:flex-row items-center justify-between gap-2">
+            <!-- 遊戲標題 -->
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-3xl shadow-inner">
+                    🌍
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-black text-emerald-900 tracking-tight">
+                        地球小衛士：20格康樂棋大冒險
+                    </h1>
+                    <p class="text-xs md:text-sm text-slate-600 font-bold">
+                        小一常識40分鐘互動溫習 ｜ 100題隨機題庫・粵語讀題・共融設計
+                    </p>
+                </div>
+            </div>
+
+            <!-- 視覺流程提示欄 (Visual Schedule for ASD Turn-taking) -->
+            <div class="flex items-center gap-1 md:gap-2 bg-slate-100 p-1.5 rounded-2xl border-2 border-slate-200 overflow-x-auto max-w-full">
+                <div id="step-1" class="step-badge flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs md:text-sm bg-emerald-600 text-white shadow">
+                    <span>1️⃣</span><span>擲骰子</span>
+                </div>
+                <span class="text-slate-400 font-bold">➔</span>
+                <div id="step-2" class="step-badge flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs md:text-sm bg-white text-slate-500">
+                    <span>2️⃣</span><span>走格子</span>
+                </div>
+                <span class="text-slate-400 font-bold">➔</span>
+                <div id="step-3" class="step-badge flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs md:text-sm bg-white text-slate-500">
+                    <span>3️⃣</span><span>聽題目答問題</span>
+                </div>
+                <span class="text-slate-400 font-bold">➔</span>
+                <div id="step-4" class="step-badge flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs md:text-sm bg-white text-slate-500">
+                    <span>4️⃣</span><span>換下一位同學</span>
+                </div>
+            </div>
+
+            <!-- 40分鐘課堂計時器與快捷功能鍵 -->
+            <div class="flex flex-wrap items-center justify-center gap-2">
+                <div class="flex items-center gap-1.5 bg-sky-50 border-2 border-sky-200 px-3 py-1.5 rounded-xl">
+                    <span class="text-base">⏱️</span>
+                    <span id="class-timer-display" class="font-black text-sky-950 text-sm md:text-base tabular-nums">40:00</span>
+                    <button onclick="toggleClassTimer()" id="btn-timer-toggle" class="px-2 py-0.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs">
+                        開始
+                    </button>
+                    <button onclick="resetClassTimer()" class="px-1.5 py-0.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs" title="重置40分鐘計時器">
+                        ↺
+                    </button>
+                </div>
+                <button id="btn-toggle-sound" onclick="toggleSound()" class="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-sm flex items-center gap-1 border-2 border-amber-300 transition">
+                    <span id="sound-icon">🔊</span>
+                    <span id="sound-text">音效開啟</span>
+                </button>
+                <button onclick="toggleTeacherPanel()" class="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-sm flex items-center gap-1 border-2 border-slate-300 transition">
+                    <span>⚙️</span>
+                    <span>教師設定</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 可收合：教師與共融調適控制台 -->
+    <section id="teacher-panel" class="hidden bg-amber-50 border-b-4 border-amber-200 px-4 py-4 shadow-inner">
+        <div class="max-w-7xl mx-auto space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 pb-2">
+                <h2 class="text-lg font-black text-amber-900 flex items-center gap-2">
+                    <span>🛠️ 教師共融調適控制台（20格棋盤・支援 40 分鐘課堂與個別化學習需要）</span>
+                </h2>
+                <div class="flex items-center gap-3 text-sm font-bold text-amber-800">
+                    <span>已隨機抽題：<strong id="stat-answered">0</strong> / 100</span>
+                    <span>題庫剩餘不重複題目：<strong id="stat-remaining">100</strong> 題</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 1. 玩家個別化設定 (SEN 調適) -->
+                <div class="bg-white p-3 rounded-2xl border-2 border-amber-200 space-y-2">
+                    <h3 class="font-black text-slate-800 text-sm">👥 學生設定（2名融合生 + 1名普通生個別調適）</h3>
+                    <div id="teacher-player-configs" class="space-y-2"></div>
+                </div>
+
+                <!-- 2. 遊戲步調與語音設定 -->
+                <div class="bg-white p-3 rounded-2xl border-2 border-amber-200 space-y-2.5">
+                    <h3 class="font-black text-slate-800 text-sm">🎲 20格課堂步調與粵語朗讀設定</h3>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="font-bold text-slate-700">骰子點數範圍：</span>
+                        <select id="dice-max-select" onchange="updateDiceMax(this.value)" class="border-2 border-slate-300 rounded-xl px-2 py-1 font-bold bg-slate-50">
+                            <option value="2">1 - 2 點 (20格・40分鐘深度慢速步調)</option>
+                            <option value="3" selected>1 - 3 點 (20格・標準課堂推薦步調)</option>
+                            <option value="6">1 - 6 點 (快速衝刺步調)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="font-bold text-slate-700">答對減格獎勵模式：</span>
+                        <select id="bonus-mode-select" onchange="updateBonusMode(this.value)" class="border-2 border-slate-300 rounded-xl px-2 py-1 font-bold bg-slate-50">
+                            <option value="shieldOnly" selected>後退格免退 + 加速格減1格 (推薦40分鐘)</option>
+                            <option value="both">所有格答對均再減1格距離 (快速到終點)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="font-bold text-slate-700">彈出題目自動粵語朗讀：</span>
+                        <input type="checkbox" id="auto-tts-checkbox" checked onchange="toggleAutoTTS(this.checked)" class="w-5 h-5 accent-emerald-600 rounded">
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="font-bold text-slate-700">語音引擎 (優先粵語)：</span>
+                        <select id="voice-select" onchange="selectVoice(this.value)" class="border-2 border-slate-300 rounded-xl px-2 py-1 font-bold bg-slate-50 max-w-[170px] truncate">
+                            <option value="">自動偵測粵語 (zh-HK)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 3. 課堂小遊戲與題庫控制 -->
+                <div class="bg-white p-3 rounded-2xl border-2 border-amber-200 space-y-2">
+                    <h3 class="font-black text-slate-800 text-sm">🎮 隨時開啟小遊戲 / 隨機抽題</h3>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button onclick="openMiniGame(0, true)" class="px-2 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-xl font-bold text-xs border border-emerald-300">♻️ 廢物分類王</button>
+                        <button onclick="openMiniGame(1, true)" class="px-2 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-900 rounded-xl font-bold text-xs border border-sky-300">🐾 動物配對</button>
+                        <button onclick="openMiniGame(2, true)" class="px-2 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl font-bold text-xs border border-amber-300">💡 省水省電</button>
+                        <button onclick="openMiniGame(3, true)" class="px-2 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-xl font-bold text-xs border border-purple-300">🎈 空氣與社交</button>
+                    </div>
+                    <div class="pt-1 flex gap-2">
+                        <button onclick="triggerRandomQuestion()" class="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow">
+                            📝 立即隨機抽問一題
+                        </button>
+                        <button onclick="resetGameConfirm()" class="py-1.5 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl font-bold text-xs border border-rose-300">
+                            🔄 重新開始
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 主內容區：左側控制與玩家狀態，右側 20格康樂棋盤 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+        <!-- 左欄：當前輪流提示、骰子區、3位學生狀態卡 (佔 4 欄) -->
+        <div class="lg:col-span-4 space-y-4">
+
+            <!-- 當前輪流與擲骰子大卡片 -->
+            <div class="bg-white rounded-3xl p-4 md:p-5 border-4 border-emerald-300 shadow-md text-center space-y-3">
+                <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-emerald-100 text-emerald-900 font-black text-sm">
+                    <span>🔔 現在輪到：</span>
+                </div>
+
+                <!-- 當前玩家大頭像與名字 -->
+                <div id="current-turn-banner" class="p-3 rounded-2xl bg-sky-50 border-2 border-sky-200 flex items-center justify-center gap-3">
+                    <div id="turn-avatar" class="w-14 h-14 rounded-2xl bg-sky-500 text-white flex items-center justify-center text-3xl shadow">
+                        🐼
+                    </div>
+                    <div class="text-left">
+                        <div id="turn-name" class="text-2xl font-black text-slate-800">星星同學</div>
+                        <div id="turn-pos-badge" class="text-sm font-bold text-slate-600">目前在第 1 格 ｜ 距離終點還有 19 格</div>
+                    </div>
+                </div>
+
+                <!-- 3D感大骰子與按鈕 -->
+                <div class="flex flex-col items-center justify-center py-1">
+                    <div id="dice-box" onclick="rollDice()" class="w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-300 to-amber-500 border-4 border-white shadow-lg flex items-center justify-center text-5xl font-black text-slate-900 cursor-pointer select-none hover:scale-105 transition">
+                        🎲
+                    </div>
+                    <p id="dice-result-text" class="mt-2 text-base font-black text-slate-700 min-h-[1.5rem]">
+                        請按下方大按鈕擲骰子！
+                    </p>
+                </div>
+
+                <button id="btn-roll" onclick="rollDice()" class="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-black text-xl shadow-lg border-b-4 border-emerald-800 transition flex items-center justify-center gap-2 gentle-pulse">
+                    <span>🎲</span>
+                    <span id="btn-roll-text">按這裏擲骰子</span>
+                </button>
+
+                <!-- 語音朗讀當前狀態按鈕 -->
+                <button onclick="speakCurrentTurn()" class="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center gap-1.5 border border-slate-300">
+                    <span>🔊</span>
+                    <span>粵語朗讀現在輪到誰</span>
+                </button>
+            </div>
+
+            <!-- 3位玩家進度與環保星章榜 -->
+            <div class="bg-white rounded-3xl p-4 border-4 border-slate-200 shadow-sm space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-black text-slate-800 flex items-center gap-1.5">
+                        <span>🏆</span><span>地球小衛士進度榜</span>
+                    </h2>
+                    <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">終點：第 20 格</span>
+                </div>
+                <div id="players-status-list" class="space-y-2.5">
+                    <!-- JS 動態生成 3 位學生卡片 -->
+                </div>
+            </div>
+
+            <!-- 棋盤圖例說明 (小一學生清晰圖示) -->
+            <div class="bg-white rounded-3xl p-4 border-4 border-slate-200 shadow-sm space-y-2">
+                <h3 class="text-sm font-black text-slate-800">🗺️ 20格棋盤說明（每一格都要答問題！）</h3>
+                <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+                    <div class="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+                        <span class="text-lg">🌿</span>
+                        <div>
+                            <div>環保前進格</div>
+                            <div class="text-[11px] text-emerald-700">答對向前2格再減1格</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-900">
+                        <span class="text-lg">⚠️</span>
+                        <div>
+                            <div>環境後退格</div>
+                            <div class="text-[11px] text-rose-700">答對可減少後退格數</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 p-2 rounded-xl bg-purple-50 border border-purple-200 text-purple-900">
+                        <span class="text-lg">🎮</span>
+                        <div>
+                            <div>趣味小遊戲格</div>
+                            <div class="text-[11px] text-purple-700">玩小遊戲+答問題減格</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 p-2 rounded-xl bg-sky-50 border border-sky-200 text-sky-900">
+                        <span class="text-lg">🌟</span>
+                        <div>
+                            <div>常識問答格</div>
+                            <div class="text-[11px] text-sky-700">100題庫隨機抽題</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右欄：20格蛇形康樂棋盤 (佔 8 欄) -->
+        <div class="lg:col-span-8 bg-white rounded-3xl p-3 md:p-5 border-4 border-emerald-200 shadow-md space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-black text-sm">🌱 起點：第 1 格 (左下)</span>
+                    <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-black text-sm">🏁 終點：第 20 格 (左上)</span>
+                    <span id="deck-counter-badge" class="px-3 py-1 rounded-full bg-indigo-100 text-indigo-900 font-black text-sm">📚 隨機題庫剩餘：100 / 100 題</span>
+                </div>
+                <div id="last-action-toast" class="text-xs md:text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                    歡迎來到 20 格地球小衛士康樂棋！請按「擲骰子」開始。
+                </div>
+            </div>
+
+            <!-- 5x4 (20格) 棋盤容器 -->
+            <div id="board-container" class="board-grid">
+                <!-- 由 JS 生成 20 個大格子 -->
+            </div>
+
+            <!-- 底部快捷小遊戲列 (讓老師在40分鐘課堂隨時帶動氣氛) -->
+            <div class="pt-2 border-t-2 border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs md:text-sm font-black text-slate-600">🎯 課堂互動小遊戲快捷鍵（隨時可玩）：</span>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="openMiniGame(0, true)" class="px-3 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-black text-xs border border-emerald-300">♻️ 1. 廢物分類回收王</button>
+                    <button onclick="openMiniGame(1, true)" class="px-3 py-1.5 rounded-xl bg-sky-100 hover:bg-sky-200 text-sky-900 font-black text-xs border border-sky-300">🐾 2. 動物家園大配對</button>
+                    <button onclick="openMiniGame(2, true)" class="px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-black text-xs border border-amber-300">💡 3. 省水省電小幫手</button>
+                    <button onclick="openMiniGame(3, true)" class="px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 font-black text-xs border border-purple-300">🎈 4. 空氣實驗與同伴擊掌</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================
+         彈出視窗 1：常識問答視窗 (每格必答，支援粵語讀題與隨機選項)
+         ========================================== -->
+    <div id="question-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-3 md:p-6">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-5 md:p-7 border-4 border-emerald-400 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
+            <!-- 頂部：格子類型與難度標籤 -->
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b-2 border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <span id="q-player-badge" class="px-3 py-1 rounded-xl bg-sky-100 text-sky-900 font-black text-sm">🐼 小星 的問題</span>
+                    <span id="q-cell-badge" class="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-900 font-black text-sm">📍 第 5 格</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="q-diff-badge" class="px-3 py-1 rounded-xl bg-amber-100 text-amber-900 font-bold text-xs">🌟 基礎題</span>
+                    <button onclick="readCurrentQuestionAndOptions()" class="px-4 py-2 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-sm md:text-base shadow flex items-center gap-1.5 border-2 border-amber-500">
+                        <span>🔊</span><span>粵語讀題</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 格子特殊規則提示條 (例如：答對可減少後退格數 / 向前2格) -->
+            <div id="q-rule-banner" class="p-3 rounded-2xl bg-emerald-50 border-2 border-emerald-200 text-emerald-900 font-bold text-sm md:text-base flex items-center gap-2">
+                <span class="text-xl">💡</span>
+                <span id="q-rule-text">答對這題常識問題，可以獲得環保星章並減少離終點的格數（再向前進 1 格）！</span>
+            </div>
+
+            <!-- 視覺情境圖示卡 + 書面語題目 -->
+            <div class="bg-slate-50 rounded-2xl p-4 md:p-5 border-2 border-slate-200 space-y-3">
+                <div id="q-visual-icon" class="text-4xl md:text-5xl text-center py-1">🌍</div>
+                <h3 id="q-text" class="text-xl md:text-2xl font-black text-slate-900 leading-relaxed text-center">
+                    題目載入中...
+                </h3>
+            </div>
+
+            <!-- 隨機排列的答案選項區 -->
+            <div id="q-options-container" class="grid grid-cols-1 gap-3">
+                <!-- JS 動態生成隨機排序的選項按鈕 + 獨立 🔊 粵語發音鈕 -->
+            </div>
+
+            <!-- 答題回饋區 (答對/答錯溫馨解釋) -->
+            <div id="q-feedback-box" class="hidden p-4 rounded-2xl border-2 space-y-3">
+                <div class="flex items-start gap-3">
+                    <div id="q-feedback-icon" class="text-3xl">🎉</div>
+                    <div class="space-y-1 flex-1">
+                        <div id="q-feedback-title" class="text-lg md:text-xl font-black">答對了！做得好！</div>
+                        <div id="q-feedback-desc" class="text-sm md:text-base font-bold text-slate-700"></div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-1">
+                    <button id="btn-retry-question" onclick="allowRetryQuestion()" class="hidden px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-base shadow">
+                        🔄 再試一次（減少後退格數）
+                    </button>
+                    <button id="btn-continue-after-q" onclick="finishQuestionStep()" class="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-lg shadow-lg">
+                        繼續前進 ➔
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         彈出視窗 2：4款趣味互動小遊戲視窗
+         ========================================== -->
+    <div id="minigame-modal" class="fixed inset-0 bg-slate-900/65 backdrop-blur-sm z-50 hidden items-center justify-center p-3 md:p-6">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-5 md:p-7 border-4 border-purple-400 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b-2 border-purple-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-3xl" id="mg-icon">🎮</span>
+                    <div>
+                        <h3 id="mg-title" class="text-xl md:text-2xl font-black text-purple-900">趣味小遊戲</h3>
+                        <p id="mg-subtitle" class="text-xs md:text-sm font-bold text-slate-600">完成小任務可獲得環保星章及向前進 2 格！</p>
+                    </div>
+                </div>
+                <button onclick="speakText(document.getElementById('mg-instruction').innerText)" class="px-3 py-2 rounded-xl bg-amber-300 hover:bg-amber-200 text-slate-900 font-black text-sm flex items-center gap-1">
+                    <span>🔊</span><span>讀出玩法</span>
+                </button>
+            </div>
+
+            <div id="mg-instruction" class="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-purple-950 font-bold text-base">
+                請依照指示完成小遊戲！
+            </div>
+
+            <!-- 小遊戲動態內容區 -->
+            <div id="mg-stage" class="min-h-[240px] bg-slate-50 rounded-2xl p-4 border-2 border-slate-200 flex flex-col items-center justify-center">
+            </div>
+
+            <!-- 小遊戲完成區 -->
+            <div id="mg-complete-bar" class="hidden p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="font-black text-emerald-900 text-base md:text-lg" id="mg-complete-text">
+                    🎉 太棒了！成功完成小遊戲，獎勵向前進 2 格！
+                </div>
+                <button onclick="closeMiniGame(true)" class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base shadow">
+                    領取獎勵 ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         彈出視窗 3：終點慶祝視窗 / 確認重置視窗
+         ========================================== -->
+    <div id="dialog-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 border-4 border-amber-400 shadow-2xl text-center space-y-4">
+            <div id="dialog-icon" class="text-6xl">🏆</div>
+            <h3 id="dialog-title" class="text-2xl font-black text-slate-900">恭喜完成大冒險！</h3>
+            <p id="dialog-message" class="text-base font-bold text-slate-600 leading-relaxed"></p>
+            <div id="dialog-buttons" class="flex items-center justify-center gap-3 pt-2"></div>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================================================
+           1. 100道小一常識科完整獨立題庫 (完全根據《2627_P1_上_常識測驗(二)》內容編寫)
+              - 涵蓋：地球表面與衛星顏色、水與空氣特性實驗、動物棲息地、愛護地球做法與針對問題、植物澆水實驗
+              - 絕不標示試卷題號，適合小一書面語閱讀及粵語朗讀
+              - 每次出題時會以 Fisher-Yates 洗牌演算法隨機打亂選項順序
+           ========================================================================= */
+        const QUESTION_BANK = [
+            // --- A. 地球表面與人造衛星照片顏色 (1 - 16) ---
+            {
+                q: "在地球的表面，哪一種環境佔的範圍較多？",
+                options: ["🌊 海洋", "⛰️ 陸地", "🏜️ 沙漠", "❄️ 冰川"],
+                ans: "🌊 海洋",
+                diff: "easy",
+                icon: "🌍",
+                hint: "地球表面大部分都是藍色的海水，所以海洋佔的範圍較多。"
+            },
+            {
+                q: "地球表面藍色以外的其他顏色代表甚麼？",
+                options: ["⛰️ 陸地", "🌊 海洋", "☁️ 空氣", "🌧️ 雨水"],
+                ans: "⛰️ 陸地",
+                diff: "easy",
+                icon: "🗺️",
+                hint: "藍色代表海洋，而藍色以外的綠色、黃色、白色等代表陸地。"
+            },
+            {
+                q: "在人造衛星拍攝的地球照片中，「藍色」代表甚麼自然環境？",
+                options: ["🌊 海洋", "🏜️ 沙漠", "🌲 森林", "🐻‍❄️ 北極"],
+                ans: "🌊 海洋",
+                diff: "easy",
+                icon: "🛰️",
+                hint: "人造衛星照片中，廣闊的藍色部分代表海洋。"
+            },
+            {
+                q: "在人造衛星拍攝的地球照片中，「綠色」代表甚麼自然環境？",
+                options: ["🌲 森林", "🏜️ 沙漠", "🌊 海洋", "❄️ 北極"],
+                ans: "🌲 森林",
+                diff: "easy",
+                icon: "🌲",
+                hint: "森林裏長滿綠色的樹木和植物，所以在衛星照片中是綠色的。"
+            },
+            {
+                q: "在人造衛星拍攝的地球照片中，「白色」代表甚麼自然環境？",
+                options: ["❄️ 北極", "🏜️ 沙漠", "🌲 森林", "🌊 海洋"],
+                ans: "❄️ 北極",
+                diff: "easy",
+                icon: "❄️",
+                hint: "北極被白茫茫的冰雪覆蓋，所以在地球照片中是白色的。"
+            },
+            {
+                q: "在人造衛星拍攝的地球照片中，「黃色」代表甚麼自然環境？",
+                options: ["🏜️ 沙漠", "🌊 海洋", "🌲 森林", "❄️ 北極"],
+                ans: "🏜️ 沙漠",
+                diff: "easy",
+                icon: "🏜️",
+                hint: "沙漠到處都是黃色的沙子，所以在地球照片中呈現黃色。"
+            },
+            {
+                q: "地球是人類、動物和植物的共同家園，我們要怎樣對待地球？",
+                options: ["💚 愛護地球", "🗑️ 破壞地球", "💨 污染地球", "🔥 浪費資源"],
+                ans: "💚 愛護地球",
+                diff: "easy",
+                icon: "🤲",
+                hint: "地球是我們的共同家園，我們要一起愛護地球。"
+            },
+            {
+                q: "動物和植物需要甚麼來維持生命？",
+                options: ["🌬️ 空氣", "🧸 玩具", "🍬 糖果", "📺 電視"],
+                ans: "🌬️ 空氣",
+                diff: "easy",
+                icon: "🌱",
+                hint: "所有動物和植物都需要空氣和水來維持生命。"
+            },
+            {
+                q: "在地球表面，陸地和海洋相比，哪一個佔的範圍較少？",
+                options: ["⛰️ 陸地較少", "🌊 海洋較少", "⚖️ 兩樣一樣多", "❄️ 只有冰雪"],
+                ans: "⛰️ 陸地較少",
+                diff: "hard",
+                icon: "🌏",
+                hint: "地球表面海洋佔的範圍較多，陸地佔的範圍較少。"
+            },
+            {
+                q: "從太空中看地球，為甚麼地球看起來像一個藍色的星球？",
+                options: ["🌊 因為地球表面海洋佔的範圍較多", "🌲 因為地球全部都是森林", "🏜️ 因為地球全部都是沙漠", "☁️ 因為空氣是深藍色的"],
+                ans: "🌊 因為地球表面海洋佔的範圍較多",
+                diff: "hard",
+                icon: "🛰️",
+                hint: "因為藍色的海洋在地球表面佔的範圍最多。"
+            },
+            {
+                q: "如果我們在地球衛星照片上看到一大片黃色區域，那裏最可能有甚麼植物？",
+                options: ["🌵 仙人掌（沙漠）", "🪸 珊瑚（海洋）", "❄️ 冰塊（北極）", " seaweed 海草"],
+                ans: "🌵 仙人掌（沙漠）",
+                diff: "hard",
+                icon: "🌵",
+                hint: "黃色代表沙漠，沙漠裏常見耐旱的仙人掌。"
+            },
+            {
+                q: "如果我們在地球衛星照片上看到茂密的樹木和草地，這片區域會顯示甚麼顏色？",
+                options: ["🟢 綠色", "🔵 藍色", "⚪ 白色", "🟡 黃色"],
+                ans: "🟢 綠色",
+                diff: "easy",
+                icon: "🌳",
+                hint: "有植物生長的森林和草地在衛星照片中是綠色的。"
+            },
+            {
+                q: "北極有浮冰和雪山，在人造衛星拍攝的地球照片中會呈現甚麼顏色？",
+                options: ["⚪ 白色", "🟢 綠色", "🟡 黃色", "🔵 藍色"],
+                ans: "⚪ 白色",
+                diff: "easy",
+                icon: "🏔️",
+                hint: "冰雪是白色的，所以北極在衛星照片中呈現白色。"
+            },
+            {
+                q: "地球是誰的共同家園？",
+                options: ["👨‍👩‍👧‍👦 人類、動物和植物", "🤖 只有機械人", "🚗 只有汽車", "🏢 只有高樓大廈"],
+                ans: "👨‍👩‍👧‍👦 人類、動物和植物",
+                diff: "easy",
+                icon: "🏡",
+                hint: "地球是人類、動物和植物的共同家園。"
+            },
+            {
+                q: "以下哪一項關於地球表面的描述是正確的？",
+                options: ["🌊 海洋佔的範圍比陸地多", "⛰️ 陸地佔的範圍比海洋多", "🏜️ 地球沒有海洋", "❄️ 地球全部被冰雪覆蓋"],
+                ans: "🌊 海洋佔的範圍比陸地多",
+                diff: "hard",
+                icon: "🌍",
+                hint: "在地球的表面，海洋佔的範圍較多。"
+            },
+            {
+                q: "人造衛星從太空拍攝地球，以下哪一個「顏色與自然環境」的配對是正確的？",
+                options: ["🔵 藍色 ➔ 海洋", "🟢 綠色 ➔ 沙漠", "⚪ 白色 ➔ 森林", "🟡 黃色 ➔ 北極"],
+                ans: "🔵 藍色 ➔ 海洋",
+                diff: "hard",
+                icon: "🛰️",
+                hint: "藍色代表海洋、綠色代表森林、白色代表北極、黃色代表沙漠。"
+            },
+
+            // --- B. 水的特性與科學探究實驗 (17 - 34) ---
+            {
+                q: "水可以流動，它有沒有固定的形狀？",
+                options: ["💧 沒有固定的形狀", "🧊 有固定的正方形", "⚪ 有固定的圓形", "🔺 有固定的三角形"],
+                ans: "💧 沒有固定的形狀",
+                diff: "easy",
+                icon: "💧",
+                hint: "水可以流動，沒有固定的形狀，倒進甚麼容器就變成甚麼形狀。"
+            },
+            {
+                q: "以下哪項探究活動能證明「水沒有味道」？",
+                options: ["🥤 用嘴巴喝一口水品嚐", "👀 用眼睛看著水杯", "👆 用手指放進水裏觸摸", "🫗 把水倒進不同形狀的瓶子"],
+                ans: "🥤 用嘴巴喝一口水品嚐",
+                diff: "easy",
+                icon: "🥤",
+                hint: "用嘴巴喝水品嚐，才能知道水有沒有味道。"
+            },
+            {
+                q: "小女孩用眼睛觀察一杯清水，這個探究活動能證明水的甚麼特性？",
+                options: ["👀 水沒有顏色（透明）", "👅 水沒有味道", "👃 水沒有氣味", "🔊 水沒有聲音"],
+                ans: "👀 水沒有顏色（透明）",
+                diff: "hard",
+                icon: "🥛",
+                hint: "用眼睛看可以觀察顏色，證明清水沒有顏色。"
+            },
+            {
+                q: "小女孩把手指伸進水杯裏觸摸水，能不能證明「水沒有味道」？",
+                options: ["❌ 不能，手指不能嚐出味道", "✅ 能，手指可以試味", "✅ 能，手指可以聞氣味", "✅ 能，手指可以看顏色"],
+                ans: "❌ 不能，手指不能嚐出味道",
+                diff: "hard",
+                icon: "👆",
+                hint: "手指只能感覺冷熱和濕潤，不能證明水沒有味道。"
+            },
+            {
+                q: "把水杯裏的水分別倒進花瓶和圓形魚缸裏，水的形狀會改變。這證明了水有甚麼特性？",
+                options: ["🫗 水沒有固定的形狀", "🎨 水有五顏六色", "🍬 水是甜的", "🧱 水是堅硬的"],
+                ans: "🫗 水沒有固定的形狀",
+                diff: "hard",
+                icon: "🏺",
+                hint: "水倒進不同形狀的容器會改變形狀，證明水可以流動，沒有固定的形狀。"
+            },
+            {
+                q: "純淨的清水有甚麼特性？",
+                options: ["💧 沒有顏色、沒有氣味和沒有味道", "🍓 紅色而且有甜味", "🍋 黃色而且有酸味", "🥛 白色而且有香味"],
+                ans: "💧 沒有顏色、沒有氣味和沒有味道",
+                diff: "easy",
+                icon: "💧",
+                hint: "純淨的水和空氣一樣，都是沒有顏色、沒有氣味和沒有味道的。"
+            },
+            {
+                q: "如果我們想知道水「有沒有氣味」，應該用身體哪個器官來探究？",
+                options: ["👃 用鼻子聞一聞", "👂 用耳朵聽一聽", "👆 用手指摸一摸", "👀 用眼睛看一看"],
+                ans: "👃 用鼻子聞一聞",
+                diff: "easy",
+                icon: "👃",
+                hint: "鼻子用聞氣味，可以證明水沒有氣味。"
+            },
+            {
+                q: "把水倒在桌面上，水會向四周散開，因為水可以怎樣？",
+                options: ["🌊 水可以流動", "🧱 水會變成石頭", "🎈 水會飛上天空", "🔥 水會自己發光"],
+                ans: "🌊 水可以流動",
+                diff: "easy",
+                icon: "🌊",
+                hint: "水可以流動，所以沒有固定的形狀。"
+            },
+            {
+                q: "把水從長方形水杯倒進圓肚子的魚缸，水會變成甚麼形狀？",
+                options: ["🐟 變成魚缸圓肚子的形狀", "📏 保持長方形不變", "⭐ 變成五角星形", "🔺 變成三角形"],
+                ans: "🐟 變成魚缸圓肚子的形狀",
+                diff: "easy",
+                icon: "🐠",
+                hint: "水沒有固定形狀，裝進魚缸就會變成魚缸的形狀。"
+            },
+            {
+                q: "動植物除了需要空氣之外，還需要甚麼來維持生命？",
+                options: ["💧 水", "🎮 遊戲機", "💎 寶石", "🎈 氣球"],
+                ans: "💧 水",
+                diff: "easy",
+                icon: "🌱",
+                hint: "水和空氣都是動物和植物維持生命必需的。"
+            },
+            {
+                q: "以下哪一項「不是」清水的特性？",
+                options: ["🧱 有固定的形狀", "💧 可以流動", "👅 沒有味道", "👀 沒有顏色"],
+                ans: "🧱 有固定的形狀",
+                diff: "hard",
+                icon: "❓",
+                hint: "水沒有固定的形狀，所以「有固定的形狀」是不正確的。"
+            },
+            {
+                q: "做科學實驗時，把水由杯子 A 倒進瓶子 B，這個動作主要觀察水的哪個特性？",
+                options: ["🫗 水會流動及沒有固定形狀", "👅 水有沒有甜味", "👃 水有沒有香味", "🔊 水會不會唱歌"],
+                ans: "🫗 水會流動及沒有固定形狀",
+                diff: "hard",
+                icon: "🧪",
+                hint: "把水倒進不同形狀的瓶子，能觀察到水會流動而且沒有固定形狀。"
+            },
+            {
+                q: "如果口渴了，喝一口白開水，嘴巴會嚐到甚麼味道？",
+                options: ["💧 沒有味道", "🍬 很甜的味道", "🍋 很酸的味道", "🧂 很鹹的味道"],
+                ans: "💧 沒有味道",
+                diff: "easy",
+                icon: "🥤",
+                hint: "白開水是沒有味道的。"
+            },
+            {
+                q: "水與木頭積木相比，哪一個沒有固定的形狀？",
+                options: ["💧 水沒有固定的形狀", "🧱 木頭積木沒有固定的形狀", "⚖️ 兩樣都沒有固定形狀", "📦 兩樣都有固定形狀"],
+                ans: "💧 水沒有固定的形狀",
+                diff: "hard",
+                icon: "🧊",
+                hint: "水可以流動，沒有固定的形狀；木頭積木則有固定形狀。"
+            },
+            {
+                q: "為甚麼我們可以透過透明玻璃杯看到杯子後面的手指？",
+                options: ["💧 因為水沒有顏色，是透明的", "🖤 因為水是黑色的", "🎨 因為水有彩虹顏色", "🧱 因為水是不透明的"],
+                ans: "💧 因為水沒有顏色，是透明的",
+                diff: "hard",
+                icon: "🥛",
+                hint: "清水沒有顏色、透明，所以能看穿過去。"
+            },
+            {
+                q: "小芳做了四個動作：A.喝水、B.把水倒進花瓶、C.用手指摸水、D.用眼睛看水。哪一個動作能證明水沒有味道？",
+                options: ["🥤 A. 喝水", "🏺 B. 把水倒進花瓶", "👆 C. 用手指摸水", "👀 D. 用眼睛看水"],
+                ans: "🥤 A. 喝水",
+                diff: "hard",
+                icon: "👧",
+                hint: "喝水品嚐（A）才能證明水沒有味道。"
+            },
+            {
+                q: "承上題，小芳把水倒進不同形狀的花瓶和魚缸（動作B），能證明甚麼？",
+                options: ["💧 水可以流動，沒有固定形狀", "👅 水沒有味道", "👃 水沒有氣味", "🌡️ 水是熱的"],
+                ans: "💧 水可以流動，沒有固定形狀",
+                diff: "hard",
+                icon: "🏺",
+                hint: "把水倒進不同容器，證明水可以流動、沒有固定形狀。"
+            },
+            {
+                q: "我們每天都要喝水，地球上的動物和植物需要水嗎？",
+                options: ["✅ 需要，動植物都需要水維持生命", "❌ 不需要，只有人類需要水", "❌ 只有動物需要，植物不需要", "❌ 只有植物需要，動物不需要"],
+                ans: "✅ 需要，動植物都需要水維持生命",
+                diff: "easy",
+                icon: "🌿",
+                hint: "人類、動物和植物都需要水和空氣來維持生命。"
+            },
+
+            // --- C. 空氣的特性與氣球實驗、植物開花實驗 (35 - 52) ---
+            {
+                q: "空氣沒有氣味、沒有味道，還有沒有甚麼？",
+                options: ["🎨 沒有顏色", "🌬️ 沒有流動", "🌍 沒有在地球上", "🫁 沒有用處"],
+                ans: "🎨 沒有顏色",
+                diff: "easy",
+                icon: "🌬️",
+                hint: "空氣沒有顏色、氣味和味道。"
+            },
+            {
+                q: "我們用眼睛能不能直接看見空氣？",
+                options: ["👀 不能看見空氣，因為空氣沒有顏色", "✅ 能看見空氣是藍色的", "✅ 能看見空氣是白色的", "✅ 能看見空氣是綠色的"],
+                ans: "👀 不能看見空氣，因為空氣沒有顏色",
+                diff: "easy",
+                icon: "👁️",
+                hint: "空氣沒有顏色，所以我們用眼睛不能直接看見空氣。"
+            },
+            {
+                q: "在科學實驗中，把空氣吹入氣球裏後，再把氣球扭成小狗的形狀。這證明了空氣有甚麼特性？",
+                options: ["🎈 空氣沒有固定形狀", "🎨 空氣有顏色", "👅 空氣有甜味", "🧱 空氣是堅硬的"],
+                ans: "🎈 空氣沒有固定形狀",
+                diff: "hard",
+                icon: "🐩",
+                hint: "氣球扭成小狗形狀，裏面的空氣也跟著改變形狀，證明空氣沒有固定形狀！"
+            },
+            {
+                q: "在科學實驗中，把充了氣的氣球的結鬆開，氣球口對著紙巾，紙巾會怎樣？",
+                options: ["🧻 紙巾會被吹起", "🪨 紙巾完全不動", "💧 紙巾會變成水", "🔥 紙巾會變熱"],
+                ans: "🧻 紙巾會被吹起",
+                diff: "easy",
+                icon: "🎈",
+                hint: "氣球裏的空氣衝出來，會把輕飄飄的紙巾吹起。"
+            },
+            {
+                q: "把充了氣的氣球的結鬆開，吹起了紙巾。這個實驗結果證明了空氣有甚麼特性？",
+                options: ["💨 空氣會流動", "🎨 空氣有顏色", "🧱 空氣有固定形狀", "🍬 空氣有味道"],
+                ans: "💨 空氣會流動",
+                diff: "hard",
+                icon: "🌬️",
+                hint: "氣球裏的空氣跑出來吹動紙巾，證明了空氣會流動！"
+            },
+            {
+                q: "子菱把盆栽放在拉上窗簾的窗邊，說：「我這兩天已經定時、適量地澆水了，怎麼還不開花？」為甚麼植物還不開花？",
+                options: ["☀️ 窗簾擋住了陽光，而且只澆水兩天時間太短", "🍬 因為她沒有給植物喝汽水", "🧸 因為植物沒有玩具", "❄️ 因為植物不喜歡喝水"],
+                ans: "☀️ 窗簾擋住了陽光，而且只澆水兩天時間太短",
+                diff: "hard",
+                icon: "🪴",
+                hint: "植物生長和開花需要陽光、空氣、水和足夠的時間，拉上窗簾就沒有陽光了。"
+            },
+            {
+                q: "如果子菱想讓盆栽健康生長和開花，除了定時適量澆水，還應該怎樣做？",
+                options: ["🪟 拉開窗簾讓植物吸收陽光，並耐心等待", "🌑 把植物放進黑暗的衣櫃裏", "🧊 每天倒冰塊給植物", "🚫 永遠不要再澆水"],
+                ans: "🪟 拉開窗簾讓植物吸收陽光，並耐心等待",
+                diff: "hard",
+                icon: "🌻",
+                hint: "植物需要陽光才能健康生長和開花！"
+            },
+            {
+                q: "空氣和水有哪些相同的特性？",
+                options: ["✨ 都沒有顏色、氣味、味道，也沒有固定形狀並會流動", "🎨 都是藍色的", "🧱 都有固定的正方形形狀", "🍬 都是甜味的"],
+                ans: "✨ 都沒有顏色、氣味、味道，也沒有固定形狀並會流動",
+                diff: "hard",
+                icon: "💧",
+                hint: "空氣和水都沒有顏色、氣味和味道，而且都可以流動、沒有固定形狀。"
+            },
+            {
+                q: "當微風吹過，樹葉輕輕搖動，這證明了空氣具有甚麼特性？",
+                options: ["🍃 空氣會流動", "🎨 空氣是綠色的", "🧱 空氣有固定形狀", "👅 空氣有味道"],
+                ans: "🍃 空氣會流動",
+                diff: "easy",
+                icon: "🍃",
+                hint: "風就是流動的空氣，吹動樹葉證明空氣會流動。"
+            },
+            {
+                q: "把空氣吹進圓形氣球是圓形，吹進長條氣球再扭成小狗就變成小狗形狀。這是因為空氣：",
+                options: ["🎈 沒有固定形狀", "🎨 有不同顏色", "👃 有不同氣味", "🔊 會發出音樂"],
+                ans: "🎈 沒有固定形狀",
+                diff: "easy",
+                icon: "🎈",
+                hint: "空氣沒有固定形狀，會隨著氣球的形狀而改變。"
+            },
+            {
+                q: "我們呼吸時吸進身體的是甚麼？",
+                options: ["🌬️ 空氣", "🪨 石頭", "🏜️ 沙子", "🖍️ 顏色筆"],
+                ans: "🌬️ 空氣",
+                diff: "easy",
+                icon: "🫁",
+                hint: "人類、動物和植物都需要空氣來維持生命。"
+            },
+            {
+                q: "如果沒有空氣，地球上的動物和植物會怎樣？",
+                options: ["🥀 不能維持生命", "🎉 長得更高更大", "🏃 跑得更快", "🌸 開出更多花朵"],
+                ans: "🥀 不能維持生命",
+                diff: "easy",
+                icon: "🌍",
+                hint: "動物和植物需要空氣來維持生命，沒有空氣就無法生存。"
+            },
+            {
+                q: "用鼻子聞一聞身邊新鮮的空氣，會聞到甚麼氣味？",
+                options: ["👃 沒有氣味", "🍓 士多啤梨香味", "🧄 大蒜味", "🍫 朱古力味"],
+                ans: "👃 沒有氣味",
+                diff: "easy",
+                icon: "👃",
+                hint: "新鮮乾淨的空氣是沒有顏色、氣味和味道的。"
+            },
+            {
+                q: "以下哪個實驗可以讓人「感受或看到」空氣在流動？",
+                options: ["🎈 鬆開充氣氣球的結，讓氣體吹起紙巾", "🪨 把石頭放在桌上不動", "📕 把書本合上", "🖍️ 用畫筆在紙上塗顏色"],
+                ans: "🎈 鬆開充氣氣球的結，讓氣體吹起紙巾",
+                diff: "hard",
+                icon: "🧻",
+                hint: "鬆開氣球結吹起紙巾，清楚證明了空氣會流動。"
+            },
+            {
+                q: "植物生長需要哪幾種重要元素？",
+                options: ["☀️ 陽光、空氣和水", "🍬 糖果、汽水和雪糕", "📺 電視、電腦和手機", "🧊 冰塊、塑膠和鐵片"],
+                ans: "☀️ 陽光、空氣和水",
+                diff: "easy",
+                icon: "🌱",
+                hint: "植物需要陽光、空氣和適量的水才能健康成長。"
+            },
+            {
+                q: "給植物澆水時，應該怎樣澆水才最恰當？",
+                options: ["🚿 定時、適量地澆水", "🌊 一次過倒十桶水把泥土淹沒", "🚫 一個月都不澆水", "🥤 倒熱茶或汽水給植物"],
+                ans: "🚿 定時、適量地澆水",
+                diff: "hard",
+                icon: "🪴",
+                hint: "照顧植物要定時、適量地澆水，並讓它曬太陽。"
+            },
+            {
+                q: "空氣充滿在我們的課室裏嗎？",
+                options: ["✅ 是的，空氣無處不在，只是沒有顏色看不見", "❌ 沒有，課室裏沒有空氣", "❌ 只有操場才有空氣", "❌ 只有氣球裏面才有空氣"],
+                ans: "✅ 是的，空氣無處不在，只是沒有顏色看不見",
+                diff: "hard",
+                icon: "🏫",
+                hint: "空氣沒有顏色、氣味和味道，充滿在我們四周。"
+            },
+            {
+                q: "把一個空膠袋張開揮動再綁緊袋口，膠袋會鼓起來。袋子裏面裝著甚麼？",
+                options: ["🌬️ 空氣", "💧 海水", "🏜️ 沙子", "❄️ 白雪"],
+                ans: "🌬️ 空氣",
+                diff: "easy",
+                icon: "🛍️",
+                hint: "鼓起來的膠袋裏面裝滿了看不見的空氣。"
+            },
+
+            // --- D. 不同自然環境居住的動物：海洋、森林陸地、沙漠、冰雪陸地 (53 - 78) ---
+            {
+                q: "以下哪種動物居住在「海洋」裏？",
+                options: ["🐙 八爪魚（章魚）", "🐰 兔子", "🦁 獅子", "🐪 駱駝"],
+                ans: "🐙 八爪魚（章魚）",
+                diff: "easy",
+                icon: "🐙",
+                hint: "八爪魚（章魚）有八隻腕足，居住在海洋裏。"
+            },
+            {
+                q: "以下哪種動物居住在「海洋」裏？",
+                options: ["🐬 海豚", "🐰 兔子", "🦓 斑馬", "🐿️ 松鼠"],
+                ans: "🐬 海豚",
+                diff: "easy",
+                icon: "🐬",
+                hint: "海豚擅長游泳，居住在廣闊的海洋裏。"
+            },
+            {
+                q: "以下哪種體型龐大的動物居住在「海洋」裏？",
+                options: ["🐋 鯨魚", "🦁 獅子", "🐪 駱駝", "🐔 母雞"],
+                ans: "🐋 鯨魚",
+                diff: "easy",
+                icon: "🐋",
+                hint: "鯨魚是居住在海洋裏的動物。"
+            },
+            {
+                q: "小丑魚（海魚）和水母居住在哪一個自然環境？",
+                options: ["🌊 海洋", "🏜️ 沙漠", "🌲 森林陸地", "🏔️ 高山草地"],
+                ans: "🌊 海洋",
+                diff: "easy",
+                icon: "🐠",
+                hint: "小丑魚和水母都是生活在海洋裏的動物。"
+            },
+            {
+                q: "兔子居住在哪裏？",
+                options: ["🌿 有植物生長的陸地", "🌊 深海裏面", "❄️ 北極浮冰下", "🌋 火山口"],
+                ans: "🌿 有植物生長的陸地",
+                diff: "easy",
+                icon: "🐰",
+                hint: "兔子喜歡吃草，居住在有植物生長的陸地上（不是海洋動物）。"
+            },
+            {
+                q: "以下哪種動物在「有植物生長的陸地」上居住？",
+                options: ["🦁 獅子", "🐧 企鵝", "🦭 海豹", "🐙 八爪魚"],
+                ans: "🦁 獅子",
+                diff: "easy",
+                icon: "🦁",
+                hint: "獅子居住在有植物生長的陸地（草原和森林）。"
+            },
+            {
+                q: "身上有黑白條紋的「斑馬」，居住在哪一個環境？",
+                options: ["🌿 有植物生長的陸地", "🌊 海洋", "❄️ 冰雪覆蓋的陸地", "🏜️ 沒有植物的深海"],
+                ans: "🌿 有植物生長的陸地",
+                diff: "easy",
+                icon: "🦓",
+                hint: "斑馬吃草，居住在有植物生長的陸地上。"
+            },
+            {
+                q: "「母雞和小雞」以及「松鼠」居住在哪裏？",
+                options: ["🌳 有植物生長的陸地", "🌊 海洋", "❄️ 冰雪覆蓋的北極", "☁️ 白雲上面"],
+                ans: "🌳 有植物生長的陸地",
+                diff: "easy",
+                icon: "🐿️",
+                hint: "母雞、小雞和松鼠都生活在有植物生長的陸地上。"
+            },
+            {
+                q: "以下哪種動物在炎熱乾燥的「沙漠」生活？",
+                options: ["🐪 駱駝", "🐻‍❄️ 北極熊", "🐧 企鵝", "🐬 海豚"],
+                ans: "🐪 駱駝",
+                diff: "easy",
+                icon: "🐪",
+                hint: "駱駝被稱為沙漠之舟，在沙漠生活。"
+            },
+            {
+                q: "除了駱駝之外，以下哪種動物也在「沙漠」生活？",
+                options: ["🦎 沙蜥", "🐧 企鵝", "🐻‍❄️ 北極熊", "🐋 鯨魚"],
+                ans: "🦎 沙蜥",
+                diff: "hard",
+                icon: "🦎",
+                hint: "沙蜥（沙漠蜥蜴）適應炎熱乾燥的環境，在沙漠生活。"
+            },
+            {
+                q: "以下哪種動物在寒冷、「冰雪覆蓋的陸地」生活？",
+                options: ["🐻‍❄️ 北極熊", "🐪 駱駝", "🦎 沙蜥", "🦁 獅子"],
+                ans: "🐻‍❄️ 北極熊",
+                diff: "easy",
+                icon: "🐻‍❄️",
+                hint: "北極熊有厚厚的毛皮，在冰雪覆蓋的北極生活。"
+            },
+            {
+                q: "除了北極熊之外，以下哪種動物也在「冰雪覆蓋的陸地」生活？",
+                options: ["🐧 企鵝", "🐪 駱駝", "🦎 沙蜥", "🐿️ 松鼠"],
+                ans: "🐧 企鵝",
+                diff: "easy",
+                icon: "🐧",
+                hint: "企鵝不怕寒冷，在冰雪覆蓋的陸地生活。"
+            },
+            {
+                q: "「海豹」和「企鵝」通常居住在怎樣的環境？",
+                options: ["❄️ 寒冷、有冰雪及靠近海洋的地方", "🏜️ 炎熱乾燥的沙漠", "🌳 熱帶森林的樹頂", "🌾 乾旱的農田"],
+                ans: "❄️ 寒冷、有冰雪及靠近海洋的地方",
+                diff: "hard",
+                icon: "🦭",
+                hint: "企鵝和海豹不是居住在有植物生長的溫暖陸地，而是居住在寒冷冰雪與海洋環境。"
+            },
+            {
+                q: "請把動物分類：在「A.駱駝、B.北極熊、C.企鵝、D.沙蜥」中，哪兩種動物在沙漠生活？",
+                options: ["🏜️ 駱駝 和 沙蜥", "❄️ 北極熊 和 企鵝", "🐪 駱駝 和 企鵝", "🐻‍❄️ 北極熊 和 沙蜥"],
+                ans: "🏜️ 駱駝 和 沙蜥",
+                diff: "hard",
+                icon: "🏜️",
+                hint: "駱駝（A）和沙蜥（D）都在沙漠生活。"
+            },
+            {
+                q: "請把動物分類：在「A.駱駝、B.北極熊、C.企鵝、D.沙蜥」中，哪兩種動物在冰雪覆蓋的陸地生活？",
+                options: ["❄️ 北極熊 和 企鵝", "🏜️ 駱駝 和 沙蜥", "🐪 駱駝 和 北極熊", "🦎 企鵝 和 沙蜥"],
+                ans: "❄️ 北極熊 和 企鵝",
+                diff: "hard",
+                icon: "❄️",
+                hint: "北極熊（B）和企鵝（C）都在冰雪覆蓋的陸地生活。"
+            },
+            {
+                q: "請把動物分類：在「A.小丑魚、B.母雞、C.松鼠、D.水母」中，哪兩種動物在海洋生活？",
+                options: ["🌊 小丑魚 和 水母", "🌳 母雞 和 松鼠", "🐠 小丑魚 和 松鼠", "🐔 母雞 和 水母"],
+                ans: "🌊 小丑魚 和 水母",
+                diff: "hard",
+                icon: "🪼",
+                hint: "小丑魚（A）和水母（D）都在海洋生活。"
+            },
+            {
+                q: "請把動物分類：在「A.小丑魚、B.母雞、C.松鼠、D.水母」中，哪兩種動物在有植物生長的陸地生活？",
+                options: ["🌳 母雞 和 松鼠", "🌊 小丑魚 和 水母", "🐠 小丑魚 和 母雞", "🪼 松鼠 和 水母"],
+                ans: "🌳 母雞 和 松鼠",
+                diff: "hard",
+                icon: "🐔",
+                hint: "母雞（B）和松鼠（C）都在有植物生長的陸地生活。"
+            },
+            {
+                q: "在「八爪魚、兔子、海豚、鯨魚」四種動物中，哪一種「不是」居住在海洋裏？",
+                options: ["🐰 兔子", "🐙 八爪魚", "🐬 海豚", "🐋 鯨魚"],
+                ans: "🐰 兔子",
+                diff: "easy",
+                icon: "🐰",
+                hint: "八爪魚、海豚和鯨魚都住在海洋，只有兔子住在陸地上。"
+            },
+            {
+                q: "在「企鵝、獅子、斑馬、海豹」四種動物中，哪兩種居住在有植物生長的陸地上？",
+                options: ["🦁 獅子 和 🦓 斑馬", "🐧 企鵝 和 🦭 海豹", "🐧 企鵝 和 🦁 獅子", "🦓 斑馬 和 🦭 海豹"],
+                ans: "🦁 獅子 和 🦓 斑馬",
+                diff: "hard",
+                icon: "🦁",
+                hint: "獅子和斑馬居住在有植物生長的陸地上。"
+            },
+            {
+                q: "大樹上有很多果實和樹葉，以下哪種動物最喜歡在樹林裏跳來跳去生活？",
+                options: ["🐿️ 松鼠", "🪼 水母", "🐋 鯨魚", "🐙 八爪魚"],
+                ans: "🐿️ 松鼠",
+                diff: "easy",
+                icon: "🐿️",
+                hint: "松鼠住在有植物生長的陸地森林裏。"
+            },
+            {
+                q: "身體透明、有很多長長觸鬚的「水母」，居住在哪裏？",
+                options: ["🌊 海洋", "🏜️ 沙漠", "🌲 森林", "❄️ 雪山山頂"],
+                ans: "🌊 海洋",
+                diff: "easy",
+                icon: "🪼",
+                hint: "水母在海洋裏漂浮和生活。"
+            },
+            {
+                q: "為甚麼北極熊能夠在白色的冰雪陸地上生活？",
+                options: ["🐻‍❄️ 牠有厚厚的毛皮保暖", "🌵 牠喜歡炎熱的沙漠", "🌊 牠用魚鰓在深海呼吸", "🌴 牠只吃熱帶水果"],
+                ans: "🐻‍❄️ 牠有厚厚的毛皮保暖",
+                diff: "hard",
+                icon: "🐻‍❄️",
+                hint: "北極熊有厚厚的毛皮和脂肪，適合在寒冷的冰雪陸地生活。"
+            },
+            {
+                q: "為甚麼駱駝適合在黃色沙子覆蓋的沙漠生活？",
+                options: ["🐪 牠有駝峰，可以在炎熱缺水的沙漠行走", "❄️ 牠最喜歡在冰水裏游泳", "🌲 牠只住在深海裏", "🐙 牠有八隻觸手"],
+                ans: "🐪 牠有駝峰，可以在炎熱缺水的沙漠行走",
+                diff: "hard",
+                icon: "🐪",
+                hint: "駱駝能適應乾燥缺水的沙漠環境。"
+            },
+            {
+                q: "如果把小丑魚放到乾燥的沙漠裏，牠能不能生存？",
+                options: ["❌ 不能，因為小丑魚只能在海洋水裏生活", "✅ 能，小丑魚會在沙上跑步", "✅ 能，小丑魚喜歡曬太陽", "✅ 能，小丑魚不用水"],
+                ans: "❌ 不能，因為小丑魚只能在海洋水裏生活",
+                diff: "easy",
+                icon: "🐠",
+                hint: "不同的動物需要居住在適合自己的自然環境裏。"
+            },
+            {
+                q: "在人造衛星照片中顯示為「藍色」的自然環境，可以找到以下哪種動物？",
+                options: ["🐬 海豚", "🐪 駱駝", "🦁 獅子", "🐿️ 松鼠"],
+                ans: "🐬 海豚",
+                diff: "hard",
+                icon: "🐬",
+                hint: "藍色代表海洋，海豚居住在海洋裏！"
+            },
+            {
+                q: "在人造衛星照片中顯示為「黃色」的自然環境，可以找到以下哪種動物？",
+                options: ["🐪 駱駝和沙蜥", "🐋 鯨魚和海豚", "🐻‍❄️ 北極熊和企鵝", "🐠 小丑魚和水母"],
+                ans: "🐪 駱駝和沙蜥",
+                diff: "hard",
+                icon: "🏜️",
+                hint: "黃色代表沙漠，駱駝和沙蜥在沙漠生活！"
+            },
+
+            // --- E. 愛護地球的做法 vs 破壞地球的做法及針對問題 (79 - 100) ---
+            {
+                q: "洗澡時，怎樣做才是「愛護地球」的做法？",
+                options: ["🚿 用花灑淋浴代替浸浴", "🛁 每天放滿一整缸水浸浴", "🚰 洗完澡不關水龍頭", "💦 邊洗澡邊玩水一小時"],
+                ans: "🚿 用花灑淋浴代替浸浴",
+                diff: "easy",
+                icon: "🚿",
+                hint: "用花灑淋浴代替浸浴可以節約用水，是愛護地球的做法。"
+            },
+            {
+                q: "「用淋浴代替浸浴」主要是針對解決哪一個環境問題？",
+                options: ["💧 浪費水", "⚡ 浪費電", "🚗 汽車排出廢氣", "🧴 胡亂棄置膠樽"],
+                ans: "💧 浪費水",
+                diff: "easy",
+                icon: "💧",
+                hint: "浸浴需要用很多水，改用淋浴可以減少「浪費水」。"
+            },
+            {
+                q: "喝完水的塑膠樽（膠樽），怎樣處理才是「愛護地球」的做法？",
+                options: ["♻️ 放進分類回收箱", "🗑️ 隨手扔在馬路上", "🌊 扔進大海裏", "🔥 在公園裏燒掉"],
+                ans: "♻️ 放進分類回收箱",
+                diff: "easy",
+                icon: "♻️",
+                hint: "把膠樽放進分類回收箱，可以循環再造，愛護地球。"
+            },
+            {
+                q: "「分類回收廢物（把膠樽放入回收箱）」主要是針對哪一個問題？",
+                options: ["🧴 胡亂棄置膠樽", "💧 浪費水", "⚡ 浪費電", "🚗 汽車排出廢氣"],
+                ans: "🧴 胡亂棄置膠樽",
+                diff: "hard",
+                icon: "♻️",
+                hint: "分類回收廢物能解決「胡亂棄置膠樽」和減少垃圾的問題。"
+            },
+            {
+                q: "外出時，「選擇乘搭公共交通工具（例如排隊乘搭巴士）」，是愛護地球還是破壞地球的做法？",
+                options: ["💚 愛護地球的做法", "💔 破壞地球的做法", "❌ 浪費水的做法", "❌ 浪費電的做法"],
+                ans: "💚 愛護地球的做法",
+                diff: "easy",
+                icon: "🚌",
+                hint: "乘搭巴士等公共交通工具是愛護地球的好習慣。"
+            },
+            {
+                q: "「選擇乘搭公共交通工具（例如巴士）」主要是針對哪一個環境問題？",
+                options: ["🚗 汽車排出廢氣", "💧 浪費水", "⚡ 浪費電", "🧴 胡亂棄置膠樽"],
+                ans: "🚗 汽車排出廢氣",
+                diff: "hard",
+                icon: "🚌",
+                hint: "大家一起乘搭巴士，可以減少馬路上的私家車數量，減少「汽車排出廢氣」。"
+            },
+            {
+                q: "離開房間或睡覺前，「隨手關掉不需使用的電燈」，是怎樣的做法？",
+                options: ["💡 愛護地球的做法", "💔 破壞地球的做法", "💧 浪費水的做法", "🗑️ 製造垃圾的做法"],
+                ans: "💡 愛護地球的做法",
+                diff: "easy",
+                icon: "💡",
+                hint: "隨手關燈可以節約用電，是愛護地球的做法。"
+            },
+            {
+                q: "「關掉不需使用的電燈」主要是針對哪一個問題？",
+                options: ["⚡ 浪費電", "💧 浪費水", "🚗 汽車排出廢氣", "🧴 胡亂棄置膠樽"],
+                ans: "⚡ 浪費電",
+                diff: "easy",
+                icon: "⚡",
+                hint: "關掉不需使用的電燈，可以避免「浪費電」。"
+            },
+            {
+                q: "大白天窗外陽光充足，房間裏沒有人，卻「長期開著吊燈和檯燈」。這是怎樣的做法？",
+                options: ["💔 破壞地球的做法（浪費電）", "💚 愛護地球的做法", "💧 節約用水的做法", "♻️ 回收廢物的做法"],
+                ans: "💔 破壞地球的做法（浪費電）",
+                diff: "easy",
+                icon: "☀️",
+                hint: "白天沒人仍長期開著燈會浪費電，是破壞地球的做法。"
+            },
+            {
+                q: "用大浴缸放滿水及泡泡來「浸浴」，屬於哪一類做法？",
+                options: ["💔 破壞地球的做法（浪費水）", "💚 愛護地球的做法", "⚡ 節約用電的做法", "🚌 減少廢氣的做法"],
+                ans: "💔 破壞地球的做法（浪費水）",
+                diff: "easy",
+                icon: "🛁",
+                hint: "浸浴會耗用大量食水，屬於浪費水、破壞地球的做法。"
+            },
+            {
+                q: "在「A.花灑淋浴、B.把膠樽放進回收箱、C.浴缸浸浴、D.乘搭巴士」四幅圖中，哪一項「不是」愛護地球的做法？",
+                options: ["🛁 C. 浴缸浸浴", "🚿 A. 花灑淋浴", "♻️ B. 把膠樽放進回收箱", "🚌 D. 乘搭巴士"],
+                ans: "🛁 C. 浴缸浸浴",
+                diff: "hard",
+                icon: "🛁",
+                hint: "花灑淋浴、回收膠樽和乘搭巴士都是愛護地球的做法；只有浸浴會浪費水。"
+            },
+            {
+                q: "請把做法分類：在「A.浸浴、B.隨手關燈、C.長期開著燈、D.乘坐巴士」中，哪兩項是「愛護地球的做法」？",
+                options: ["💚 隨手關燈 和 乘坐巴士", "💔 浸浴 和 長期開著燈", "🛁 浸浴 和 隨手關燈", "💡 長期開著燈 和 乘坐巴士"],
+                ans: "💚 隨手關燈 和 乘坐巴士",
+                diff: "hard",
+                icon: "🌟",
+                hint: "隨手關燈（B）和乘坐巴士（D）都是愛護地球的做法。"
+            },
+            {
+                q: "請把做法分類：在「A.浸浴、B.隨手關燈、C.長期開著燈、D.乘坐巴士」中，哪兩項是「破壞地球的做法」？",
+                options: ["💔 浸浴 和 長期開著燈", "💚 隨手關燈 和 乘坐巴士", "🚌 浸浴 和 乘坐巴士", "💡 隨手關燈 和 長期開著燈"],
+                ans: "💔 浸浴 和 長期開著燈",
+                diff: "hard",
+                icon: "⚠️",
+                hint: "浸浴（A，浪費水）和長期開著燈（C，浪費電）都是破壞地球的做法。"
+            },
+            {
+                q: "為甚麼「隨手關燈」能夠幫助愛護地球？",
+                options: ["⚡ 因為可以減少浪費電", "💧 因為可以產生更多海水", "🦁 因為可以變出獅子", "🎈 因為可以吹大氣球"],
+                ans: "⚡ 因為可以減少浪費電",
+                diff: "easy",
+                icon: "💡",
+                hint: "隨手關燈能節約能源，減少浪費電。"
+            },
+            {
+                q: "如果馬路上的私家車太多，排出很多黑煙，我們可以怎樣做來改善這個問題？",
+                options: ["🚌 選擇乘搭公共交通工具（如巴士、港鐵）", "🛁 每天在家浸浴", "💡 白天把所有電燈打開", "🗑️ 把膠樽扔進垃圾桶"],
+                ans: "🚌 選擇乘搭公共交通工具（如巴士、港鐵）",
+                diff: "hard",
+                icon: "🚌",
+                hint: "選擇乘搭公共交通工具可以針對解決「汽車排出廢氣」的問題。"
+            },
+            {
+                q: "在學校洗完手後，看見水龍頭還在滴水，地球小衛士應該怎樣做？",
+                options: ["🚰 立即把水龍頭關緊，避免浪費水", "🏃 假裝看不見走開", "💦 把水龍頭開到最大", "🧻 把整包紙巾扔進洗手盆"],
+                ans: "🚰 立即把水龍頭關緊，避免浪費水",
+                diff: "easy",
+                icon: "🚰",
+                hint: "關緊水龍頭可以珍惜食水，愛護地球。"
+            },
+            {
+                q: "課室裏所有同學都去上體育課了，小班長最後一個離開課室，他應該怎樣做？",
+                options: ["💡 關掉課室裏不需使用的電燈和風扇", "⚡ 把所有電燈和冷氣全部打開", "🚰 把水龍頭打開流水", "🗑️ 把廢紙扔在地上"],
+                ans: "💡 關掉課室裏不需使用的電燈和風扇",
+                diff: "easy",
+                icon: "🏫",
+                hint: "離開沒有人的房間時，關掉不需使用的電燈可以防止浪費電。"
+            },
+            {
+                q: "看到標有「循環再造標誌 ♻️」的回收箱，代表我們可以把甚麼放進去？",
+                options: ["🧴 乾淨的廢紙、鋁罐和膠樽", "🍱 吃剩的飯菜和湯水", "🐶 小動物", "🌊 海水"],
+                ans: "🧴 乾淨的廢紙、鋁罐和膠樽",
+                diff: "easy",
+                icon: "♻️",
+                hint: "分類回收廢物可以減少胡亂棄置膠樽、鋁罐和廢紙。"
+            },
+            {
+                q: "以下哪一個配對是「愛護地球做法」與「針對問題」的正確連線？",
+                options: ["🚿 淋浴代替浸浴 ➔ 浪費水", "🚿 淋浴代替浸浴 ➔ 汽車排出廢氣", "🚌 乘搭公共交通工具 ➔ 浪費水", "💡 關掉電燈 ➔ 胡亂棄置膠樽"],
+                ans: "🚿 淋浴代替浸浴 ➔ 浪費水",
+                diff: "hard",
+                icon: "🔗",
+                hint: "淋浴代替浸浴針對「浪費水」；乘搭巴士針對「汽車排出廢氣」。"
+            },
+            {
+                q: "以下哪一個配對是「愛護地球做法」與「針對問題」的正確連線？",
+                options: ["♻️ 分類回收廢物 ➔ 胡亂棄置膠樽", "♻️ 分類回收廢物 ➔ 浪費電", "💡 關掉不需使用的電燈 ➔ 汽車排出廢氣", "🚌 乘搭公共交通工具 ➔ 浪費水"],
+                ans: "♻️ 分類回收廢物 ➔ 胡亂棄置膠樽",
+                diff: "hard",
+                icon: "🔗",
+                hint: "分類回收廢物針對「胡亂棄置膠樽」；關掉電燈針對「浪費電」。"
+            },
+            {
+                q: "如果我們每個人都做到：淋浴代替浸浴、隨手關燈、分類回收、乘搭巴士，地球會變成怎樣？",
+                options: ["🌍 更清潔、更美麗的共同家園", "💨 充滿廢氣和垃圾", "🏜️ 全部變成沙漠", "⚡ 沒有水也沒有電"],
+                ans: "🌍 更清潔、更美麗的共同家園",
+                diff: "easy",
+                icon: "🌈",
+                hint: "地球是人類、動物和植物的共同家園，我們一起愛護地球，家園就會更美好！"
+            },
+            {
+                q: "作為小一的「地球小衛士」，當看到家人白天在陽光充足的房間開著電燈，你可以溫柔地對家人說甚麼？",
+                options: ["💬 「我們一起關掉不需使用的電燈，愛護地球吧！」", "💢 大發脾氣大叫", "💡 把家裏所有電燈都打開", "🛁 去放滿一缸水浸浴"],
+                ans: "💬 「我們一起關掉不需使用的電燈，愛護地球吧！」",
+                diff: "easy",
+                icon: "💖",
+                hint: "溫柔禮貌地提醒家人隨手關燈，大家一起做愛護地球的好孩子！"
+            }
+        ];
+
+        /* =========================================================================
+           2. 遊戲全域狀態與 20 格棋盤特殊格設定 (專為 40 分鐘課堂設計)
+           ========================================================================= */
+        const TOTAL_TILES = 20;
+
+        // 預設 3 位學生：2 名自閉症融合生 (星星同學、晴晴同學) + 1 名普通生 (樂樂同學)
+        const players = [
+            { id: 0, name: "星星同學", roleTag: "融合支援", avatar: "🐼", color: "bg-sky-500", lightBg: "bg-sky-50", border: "border-sky-300", pos: 1, stars: 0, mode: "easy", optionCount: 3 },
+            { id: 1, name: "晴晴同學", roleTag: "融合支援", avatar: "🐰", color: "bg-emerald-500", lightBg: "bg-emerald-50", border: "border-emerald-300", pos: 1, stars: 0, mode: "easy", optionCount: 3 },
+            { id: 2, name: "樂樂同學", roleTag: "綜合挑戰", avatar: "🦁", color: "bg-amber-500", lightBg: "bg-amber-50", border: "border-amber-300", pos: 1, stars: 0, mode: "mixed", optionCount: 4 }
+        ];
+
+        let currentPlayerIndex = 0;
+        let diceMax = 3; // 20格棋盤預設 1-3 點，適合 3 名學生玩 40 分鐘
+        let bonusMode = "shieldOnly"; // 'shieldOnly': 後退格免退+加速格多減1格; 'both': 所有普通格答對也再減1格
+        let soundEnabled = true;
+        let autoTTSEnabled = true;
+        let selectedVoiceURI = "";
+        let isBusy = false;
+
+        // 40分鐘課堂計時器狀態
+        let classTimerSeconds = 40 * 60;
+        let classTimerInterval = null;
+
+        // 題庫抽題追蹤（確保100題隨機抽取且不重複）
+        let usedQuestionIndices = new Set();
+        let activeQuestionObj = null;
+        let activeCellType = null;
+        let canRetryCurrentQ = true;
+        let pendingMiniGameAfterQuestion = null;
+
+        // 定義 20 格康樂棋盤的每一格主題與特殊事件（每一格都會回答問題！）
+        // forward: 環保前進格 (向前 2 格，答對問題更可額外減少 1 格距離)
+        // backward: 環境後退格 (原本向後退 2 格，答對問題可減少 2 格後退 = 免除後退！)
+        // minigame: 趣味小遊戲格 (先進行互動小遊戲，再回答該格常識題)
+        const SPECIAL_CELLS = {
+            1:  { type: "normal",   icon: "🌱", title: "地球起點",     sub: "認識地球表面" },
+            2:  { type: "normal",   icon: "🛰️", title: "衛星看地球",   sub: "藍色與陸地" },
+            3:  { type: "forward",  steps: 2, icon: "🌿", title: "植樹前進格",   sub: "向前2格・答對減格" },
+            4:  { type: "minigame", gameId: 0, icon: "🎮", title: "廢物分類王",   sub: "小遊戲＋答題" },
+            5:  { type: "normal",   icon: "💧", title: "水的特性",     sub: "沒有固定形狀" },
+            6:  { type: "backward", steps: 2, icon: "⚠️", title: "浸浴浪費水",   sub: "後退2格・答對免退" },
+            7:  { type: "normal",   icon: "🌊", title: "海洋動物城",   sub: "海豚與八爪魚" },
+            8:  { type: "minigame", gameId: 1, icon: "🎮", title: "動物家園配對", sub: "小遊戲＋答題" },
+            9:  { type: "forward",  steps: 2, icon: "🚿", title: "淋浴節水格",   sub: "向前2格・答對減格" },
+            10: { type: "normal",   icon: "🏜️", title: "沙漠探險隊",   sub: "駱駝與沙蜥" },
+            11: { type: "backward", steps: 2, icon: "⚠️", title: "白天長開燈",   sub: "後退2格・答對免退" },
+            12: { type: "minigame", gameId: 2, icon: "🎮", title: "省水省電幫手", sub: "小遊戲＋答題" },
+            13: { type: "normal",   icon: "❄️", title: "冰雪北極圈",   sub: "北極熊與企鵝" },
+            14: { type: "forward",  steps: 2, icon: "🚌", title: "乘搭巴士格",   sub: "向前2格・減少廢氣" },
+            15: { type: "backward", steps: 2, icon: "⚠️", title: "胡亂棄膠樽",   sub: "後退2格・答對免退" },
+            16: { type: "minigame", gameId: 3, icon: "🎮", title: "空氣與好朋友", sub: "小遊戲＋答題" },
+            17: { type: "normal",   icon: "🪴", title: "植物開花謎題", sub: "陽光空氣與水" },
+            18: { type: "forward",  steps: 1, icon: "💡", title: "隨手關燈格",   sub: "向前1格・節約用電" },
+            19: { type: "backward", steps: 2, icon: "⚠️", title: "汽車排廢氣",   sub: "後退2格・答對免退" },
+            20: { type: "normal",   icon: "🏁", title: "地球衛士終點", sub: "答對終極題奪冠" }
+        };
+
+        /* =========================================================================
+           3. 40分鐘課堂計時器與 Web Audio 溫和音效系統
+           ========================================================================= */
+        function updateClassTimerDisplay() {
+            const mins = Math.floor(classTimerSeconds / 60);
+            const secs = classTimerSeconds % 60;
+            const display = document.getElementById("class-timer-display");
+            if (display) {
+                display.innerText = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+            }
+        }
+
+        function toggleClassTimer() {
+            const btn = document.getElementById("btn-timer-toggle");
+            if (classTimerInterval) {
+                clearInterval(classTimerInterval);
+                classTimerInterval = null;
+                if (btn) btn.innerText = "繼續";
+            } else {
+                if (btn) btn.innerText = "暫停";
+                classTimerInterval = setInterval(() => {
+                    if (classTimerSeconds > 0) {
+                        classTimerSeconds--;
+                        updateClassTimerDisplay();
+                    } else {
+                        clearInterval(classTimerInterval);
+                        classTimerInterval = null;
+                        if (btn) btn.innerText = "完成";
+                        playCelebrationSound();
+                        setToast("⏰ 40分鐘課堂時間到！大家都是最棒的地球小衛士！");
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetClassTimer() {
+            if (classTimerInterval) {
+                clearInterval(classTimerInterval);
+                classTimerInterval = null;
+            }
+            classTimerSeconds = 40 * 60;
+            updateClassTimerDisplay();
+            const btn = document.getElementById("btn-timer-toggle");
+            if (btn) btn.innerText = "開始";
+        }
+
+        let audioCtx = null;
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            if (audioCtx && audioCtx.state === "suspended") {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playTone(freq, duration = 0.15, type = "sine", delay = 0, gainVal = 0.08) {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+
+                gain.gain.setValueAtTime(0.001, ctx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(gainVal, ctx.currentTime + delay + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + delay);
+                osc.stop(ctx.currentTime + delay + duration + 0.02);
+            } catch (e) {
+                // 忽略瀏覽器音訊限制錯誤
+            }
+        }
+
+        function playStepSound() {
+            playTone(523.25, 0.09, "sine", 0, 0.06);
+        }
+
+        function playCorrectSound() {
+            playTone(523.25, 0.14, "triangle", 0, 0.08);    // C5
+            playTone(659.25, 0.14, "triangle", 0.12, 0.08); // E5
+            playTone(783.99, 0.25, "triangle", 0.24, 0.09); // G5
+        }
+
+        function playGentleTryAgainSound() {
+            playTone(392.00, 0.18, "sine", 0, 0.06);    // G4
+            playTone(349.23, 0.25, "sine", 0.16, 0.06); // F4
+        }
+
+        function playCelebrationSound() {
+            const notes = [523.25, 587.33, 659.25, 783.99, 1046.50];
+            notes.forEach((n, idx) => playTone(n, 0.18, "triangle", idx * 0.11, 0.09));
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById("sound-icon").innerText = soundEnabled ? "🔊" : "🔇";
+            document.getElementById("sound-text").innerText = soundEnabled ? "音效開啟" : "已靜音";
+        }
+
+        /* =========================================================================
+           4. 粵語語音合成系統 (Web Speech API - 書面語文字，粵語 zh-HK 發音)
+           ========================================================================= */
+        let availableVoices = [];
+
+        function loadVoices() {
+            if (!("speechSynthesis" in window)) return;
+            availableVoices = window.speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById("voice-select");
+            if (!voiceSelect) return;
+
+            const currentVal = voiceSelect.value;
+            voiceSelect.innerHTML = `<option value="">自動優先粵語 (zh-HK)</option>`;
+
+            // 篩選中文相關語音並優先排列香港粵語
+            const zhVoices = availableVoices.filter(v =>
+                v.lang.toLowerCase().includes("hk") ||
+                v.lang.toLowerCase().includes("yue") ||
+                v.lang.toLowerCase().includes("zh") ||
+                v.name.includes("Cantonese") ||
+                v.name.includes("粵") ||
+                v.name.includes("廣東")
+            );
+
+            zhVoices.forEach(v => {
+                const opt = document.createElement("option");
+                opt.value = v.voiceURI;
+                const isHK = v.lang.toLowerCase().includes("hk") || v.lang.toLowerCase().includes("yue") || v.name.includes("Cantonese");
+                opt.textContent = `${isHK ? "🇭🇰 [粵語] " : ""}${v.name} (${v.lang})`;
+                voiceSelect.appendChild(opt);
+            });
+
+            if (currentVal) voiceSelect.value = currentVal;
+        }
+
+        if ("speechSynthesis" in window) {
+            loadVoices();
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        // 過濾 Emoji 與特殊符號，確保粵語讀題自然清晰
+        function cleanTextForSpeech(text) {
+            if (!text) return "";
+            return text
+                .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}]/gu, "")
+                .replace(/➔/g, "，對應，")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function speakText(rawText) {
+            if (!("speechSynthesis" in window)) return;
+            try {
+                window.speechSynthesis.cancel();
+                const cleaned = cleanTextForSpeech(rawText);
+                if (!cleaned) return;
+
+                const utter = new SpeechSynthesisUtterance(cleaned);
+                utter.lang = "zh-HK";
+                utter.rate = 0.92; // 稍微放慢語速，適合小一及融合生聆聽
+                utter.pitch = 1.05;
+
+                const voices = window.speechSynthesis.getVoices();
+                let chosen = null;
+
+                if (selectedVoiceURI) {
+                    chosen = voices.find(v => v.voiceURI === selectedVoiceURI);
+                }
+                if (!chosen) {
+                    // 優先尋找 zh-HK 或 yue-Hant-HK
+                    chosen = voices.find(v =>
+                        v.lang.toLowerCase() === "zh-hk" ||
+                        v.lang.toLowerCase() === "yue-hant-hk" ||
+                        v.lang.toLowerCase().includes("hk") ||
+                        v.lang.toLowerCase().includes("yue") ||
+                        v.name.toLowerCase().includes("cantonese") ||
+                        v.name.includes("Sin-ji") ||
+                        v.name.includes("Tracy") ||
+                        v.name.includes("Danny")
+                    );
+                }
+                if (chosen) {
+                    utter.voice = chosen;
+                    utter.lang = chosen.lang;
+                }
+                window.speechSynthesis.speak(utter);
+            } catch (e) {
+                console.warn("語音播放失敗：", e);
+            }
+        }
+
+        function speakCurrentTurn() {
+            const p = players[currentPlayerIndex];
+            const remain = Math.max(0, TOTAL_TILES - p.pos);
+            speakText(`現在輪到 ${p.name}，目前在第 ${p.pos} 格，距離第 20 格終點還有 ${remain} 格，請按綠色按鈕擲骰子。`);
+        }
+
+        function readCurrentQuestionAndOptions() {
+            if (!activeQuestionObj) return;
+            const optionLabels = ["第一項", "第二項", "第三項", "第四項"];
+            const displayedOpts = Array.from(document.querySelectorAll(".option-choice-text")).map(
+                (el, idx) => `${optionLabels[idx]}：${el.innerText}`
+            );
+            const fullSpeech = `題目：${activeQuestionObj.q}。選項有：${displayedOpts.join("。")}。請選擇正確答案。`;
+            speakText(fullSpeech);
+        }
+
+        /* =========================================================================
+           5. 視覺日程欄 (Visual Schedule) 與 20 格 (5x4 蛇形) 棋盤渲染
+           ========================================================================= */
+        function setVisualStep(stepNum) {
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById(`step-${i}`);
+                if (!el) continue;
+                if (i === stepNum) {
+                    el.className = "step-badge flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs md:text-sm bg-emerald-600 text-white shadow scale-105 transition";
+                } else {
+                    el.className = "step-badge flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs md:text-sm bg-white text-slate-500 transition";
+                }
+            }
+        }
+
+        // 建立 5x4 蛇形 20 格大棋盤 (第1格在底排左邊，第20格在頂排左邊)
+        function renderBoard() {
+            const board = document.getElementById("board-container");
+            board.innerHTML = "";
+
+            for (let row = 3; row >= 0; row--) {
+                const isEvenRow = (row % 2 === 0); // row 0 (1..5), row 1 (10..6), row 2 (11..15), row 3 (20..16)
+                for (let col = 0; col < 5; col++) {
+                    const cellNum = isEvenRow ? (row * 5 + col + 1) : (row * 5 + (5 - col));
+                    const info = SPECIAL_CELLS[cellNum] || { type: "normal", icon: "🌟", title: `第 ${cellNum} 格`, sub: "常識問答" };
+
+                    // 蛇形方向指示箭頭
+                    let dirArrow = "";
+                    if (cellNum === 20) dirArrow = "🏆";
+                    else if (cellNum === 5 || cellNum === 10 || cellNum === 15) dirArrow = "⬆️";
+                    else if (isEvenRow) dirArrow = "➡️";
+                    else dirArrow = "⬅️";
+
+                    const cell = document.createElement("div");
+                    cell.id = `cell-${cellNum}`;
+
+                    // 背景色彩設計：柔和清晰、大字體
+                    let bgClass = (cellNum % 2 === 0) ? "bg-sky-50 border-sky-200" : "bg-emerald-50/80 border-emerald-200";
+                    let tagClass = "bg-white/80 text-slate-700";
+
+                    if (cellNum === 1) {
+                        bgClass = "bg-emerald-200 border-emerald-500";
+                        tagClass = "bg-emerald-700 text-white";
+                    } else if (cellNum === 20) {
+                        bgClass = "bg-amber-200 border-amber-500";
+                        tagClass = "bg-amber-600 text-white";
+                    } else if (info.type === "forward") {
+                        bgClass = "bg-emerald-100 border-emerald-400";
+                        tagClass = "bg-emerald-600 text-white";
+                    } else if (info.type === "backward") {
+                        bgClass = "bg-rose-100 border-rose-400";
+                        tagClass = "bg-rose-600 text-white";
+                    } else if (info.type === "minigame") {
+                        bgClass = "bg-purple-100 border-purple-400";
+                        tagClass = "bg-purple-600 text-white";
+                    }
+
+                    cell.className = `board-cell ${bgClass} cursor-pointer hover:brightness-98`;
+                    cell.onclick = () => speakText(`第 ${cellNum} 格，${info.title}，${info.sub}`);
+
+                    // 計算在此格上的玩家棋子
+                    const herePlayers = players.filter(p => p.pos === cellNum);
+                    const tokensHtml = herePlayers.map(p => `
+                        <div class="player-token ${p.color}" title="${p.name}">
+                            ${p.avatar}
+                        </div>
+                    `).join("");
+
+                    cell.innerHTML = `
+                        <div class="w-full flex items-center justify-between px-1">
+                            <span class="px-2 py-0.5 rounded-lg text-xs md:text-sm font-black ${tagClass} shadow-sm">
+                                ${cellNum}
+                            </span>
+                            <span class="text-xs md:text-sm opacity-75">${dirArrow}</span>
+                        </div>
+
+                        <div class="flex flex-col items-center justify-center my-0.5">
+                            <div class="text-2xl md:text-3xl leading-none">${info.icon}</div>
+                            <div class="text-xs md:text-sm font-black text-slate-800 mt-1 text-center leading-tight">${info.title}</div>
+                            <div class="text-[10px] md:text-xs font-bold text-slate-600 text-center leading-tight hidden sm:block">${info.sub}</div>
+                        </div>
+
+                        <div class="min-h-[34px] flex flex-wrap items-center justify-center gap-1 z-10">
+                            ${tokensHtml}
+                        </div>
+                    `;
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        // 渲染左側 3 位學生狀態卡與頂部當前玩家橫幅
+        function renderPlayersUI() {
+            const currentP = players[currentPlayerIndex];
+            const remainCurrent = Math.max(0, TOTAL_TILES - currentP.pos);
+            document.getElementById("turn-avatar").innerText = currentP.avatar;
+            document.getElementById("turn-avatar").className = `w-14 h-14 rounded-2xl ${currentP.color} text-white flex items-center justify-center text-3xl shadow`;
+            document.getElementById("turn-name").innerText = currentP.name;
+            document.getElementById("turn-pos-badge").innerText = `目前在第 ${currentP.pos} / ${TOTAL_TILES} 格 ｜ 距離終點還有 ${remainCurrent} 格`;
+
+            const listEl = document.getElementById("players-status-list");
+            listEl.innerHTML = players.map((p, idx) => {
+                const isTurn = (idx === currentPlayerIndex);
+                const remain = Math.max(0, TOTAL_TILES - p.pos);
+                const progressPct = Math.min(100, Math.round((p.pos / TOTAL_TILES) * 100));
+                const modeLabel = p.mode === "easy" ? "🌱 基礎溫習" : (p.mode === "hard" ? "🚀 進階挑戰" : "🌈 混合難度");
+                return `
+                    <div class="p-3 rounded-2xl border-2 transition ${isTurn ? `${p.lightBg} ${p.border} shadow-sm scale-[1.01]` : "bg-slate-50 border-slate-200 opacity-85"}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-10 h-10 rounded-xl ${p.color} text-white flex items-center justify-center text-xl shadow-sm">
+                                    ${p.avatar}
+                                </div>
+                                <div>
+                                    <div class="font-black text-slate-800 text-base flex items-center gap-1.5">
+                                        <span>${p.name}</span>
+                                        <span class="px-1.5 py-0.5 text-[10px] rounded bg-slate-200 text-slate-700 font-bold">${p.roleTag || ""}</span>
+                                        ${isTurn ? `<span class="px-2 py-0.5 text-[11px] rounded-full bg-emerald-600 text-white">進行中</span>` : ""}
+                                    </div>
+                                    <div class="text-xs font-bold text-slate-500">${modeLabel}（${p.optionCount}選1）</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-black text-slate-800 text-sm">📍 第 ${p.pos} / 20 格</div>
+                                <div class="text-xs font-bold text-emerald-700">還差 ${remain} 格 ｜ ⭐ ${p.stars}</div>
+                            </div>
+                        </div>
+                        <div class="mt-2 w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                            <div class="${p.color} h-full transition-all duration-500" style="width: ${progressPct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            // 更新題庫剩餘數量標籤與教師控制台統計
+            const remainingQ = QUESTION_BANK.length - usedQuestionIndices.size;
+            document.getElementById("stat-answered").innerText = usedQuestionIndices.size;
+            document.getElementById("stat-remaining").innerText = remainingQ;
+            const deckBadge = document.getElementById("deck-counter-badge");
+            if (deckBadge) {
+                deckBadge.innerText = `📚 隨機題庫剩餘：${remainingQ} / 100 題`;
+            }
+        }
+
+        // 渲染教師控制台內的學生個別調適選項
+        function renderTeacherPlayerConfigs() {
+            const container = document.getElementById("teacher-player-configs");
+            container.innerHTML = players.map((p, idx) => `
+                <div class="flex flex-wrap items-center justify-between gap-1 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
+                    <div class="flex items-center gap-1.5 font-black text-slate-800">
+                        <span>${p.avatar}</span>
+                        <input type="text" value="${p.name}" onchange="updatePlayerName(${idx}, this.value)" class="w-20 px-1.5 py-0.5 border border-slate-300 rounded font-bold bg-white" />
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <select onchange="updatePlayerMode(${idx}, this.value)" class="border border-slate-300 rounded px-1 py-0.5 font-bold bg-white">
+                            <option value="easy" ${p.mode === "easy" ? "selected" : ""}>基礎題</option>
+                            <option value="mixed" ${p.mode === "mixed" ? "selected" : ""}>混合題</option>
+                            <option value="hard" ${p.mode === "hard" ? "selected" : ""}>進階題</option>
+                        </select>
+                        <select onchange="updatePlayerOptionCount(${idx}, this.value)" class="border border-slate-300 rounded px-1 py-0.5 font-bold bg-white" title="選項數量調適">
+                            <option value="2" ${p.optionCount === 2 ? "selected" : ""}>2選1(共融支援)</option>
+                            <option value="3" ${p.optionCount === 3 ? "selected" : ""}>3選1(標準)</option>
+                            <option value="4" ${p.optionCount === 4 ? "selected" : ""}>4選1(挑戰)</option>
+                        </select>
+                        <button onclick="adjustPlayerPos(${idx}, -1)" class="px-1.5 py-0.5 bg-slate-200 hover:bg-slate-300 rounded font-black">-1</button>
+                        <button onclick="adjustPlayerPos(${idx}, 1)" class="px-1.5 py-0.5 bg-slate-200 hover:bg-slate-300 rounded font-black">+1</button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        /* =========================================================================
+           6. 擲骰子與 20 格行棋動畫邏輯
+           ========================================================================= */
+        function rollDice() {
+            if (isBusy) return;
+            isBusy = true;
+
+            const diceBox = document.getElementById("dice-box");
+            const rollBtn = document.getElementById("btn-roll");
+            const diceText = document.getElementById("dice-result-text");
+
+            rollBtn.disabled = true;
+            rollBtn.classList.remove("gentle-pulse");
+            rollBtn.classList.add("opacity-60");
+            diceBox.classList.add("rolling");
+
+            const diceFaces = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+            let ticks = 0;
+
+            const rollInterval = setInterval(() => {
+                const tempVal = Math.floor(Math.random() * diceMax) + 1;
+                diceBox.innerText = diceFaces[tempVal - 1];
+                playStepSound();
+                ticks++;
+
+                if (ticks >= 10) {
+                    clearInterval(rollInterval);
+                    diceBox.classList.remove("rolling");
+
+                    const finalRoll = Math.floor(Math.random() * diceMax) + 1;
+                    diceBox.innerText = `${finalRoll}`;
+                    const p = players[currentPlayerIndex];
+                    diceText.innerText = `${p.name} 擲出了 ${finalRoll} 點！前進 ${finalRoll} 格！`;
+                    setToast(`${p.avatar} ${p.name} 擲出了 ${finalRoll} 點！`);
+
+                    // 進入視覺流程第 2 步：走格子
+                    setVisualStep(2);
+                    setTimeout(() => {
+                        movePlayerSteps(currentPlayerIndex, finalRoll, () => {
+                            // 停在格子上後，進入第 3 步：聽題目答問題（每一格都必須回答問題）
+                            setVisualStep(3);
+                            const landedCell = SPECIAL_CELLS[p.pos] || { type: "normal" };
+                            setTimeout(() => {
+                                // 若停在小遊戲格 (4, 8, 12, 16)，先玩小遊戲再答問題，確保每一格都有回答問題！
+                                if (landedCell.type === "minigame") {
+                                    pendingMiniGameAfterQuestion = false;
+                                    openMiniGame(landedCell.gameId, false, true);
+                                } else {
+                                    openQuestionForCurrentCell();
+                                }
+                            }, 450);
+                        });
+                    }, 450);
+                }
+            }, 90);
+        }
+
+        // 逐格移動棋子動畫 (1 至 20 格)
+        function movePlayerSteps(playerIdx, steps, onComplete) {
+            const p = players[playerIdx];
+            const direction = steps >= 0 ? 1 : -1;
+            let remaining = Math.abs(steps);
+
+            function stepOnce() {
+                if (remaining <= 0) {
+                    renderBoard();
+                    renderPlayersUI();
+                    const targetCell = document.getElementById(`cell-${p.pos}`);
+                    if (targetCell) {
+                        targetCell.classList.add("active-target");
+                        setTimeout(() => targetCell.classList.remove("active-target"), 1200);
+                    }
+                    if (onComplete) onComplete();
+                    return;
+                }
+
+                p.pos = Math.min(TOTAL_TILES, Math.max(1, p.pos + direction));
+                remaining--;
+                playStepSound();
+                renderBoard();
+                renderPlayersUI();
+
+                if (p.pos === TOTAL_TILES || p.pos === 1) {
+                    remaining = 0;
+                }
+                setTimeout(stepOnce, 320);
+            }
+
+            stepOnce();
+        }
+
+        /* =========================================================================
+           7. Fisher-Yates 洗牌與 100 題隨機抽題、問答減格互動邏輯
+           ========================================================================= */
+        // Fisher-Yates 洗牌演算法，確保每次題目抽取及答案選項順序完全隨機
+        function shuffleArray(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        // 根據學生的難度偏好從 100 題題庫中隨機抽出未答過的題目
+        function pickNextQuestion(preferredMode) {
+            if (usedQuestionIndices.size >= QUESTION_BANK.length) {
+                usedQuestionIndices.clear(); // 100題全部抽完後自動重新洗牌
+            }
+
+            let candidates = [];
+            QUESTION_BANK.forEach((qObj, idx) => {
+                if (!usedQuestionIndices.has(idx)) {
+                    if (preferredMode === "mixed" || qObj.diff === preferredMode) {
+                        candidates.push(idx);
+                    }
+                }
+            });
+
+            if (candidates.length === 0) {
+                QUESTION_BANK.forEach((_, idx) => {
+                    if (!usedQuestionIndices.has(idx)) candidates.push(idx);
+                });
+            }
+
+            const randomIndex = candidates[Math.floor(Math.random() * candidates.length)];
+            usedQuestionIndices.add(randomIndex);
+            return QUESTION_BANK[randomIndex];
+        }
+
+        function openQuestionForCurrentCell() {
+            const p = players[currentPlayerIndex];
+            const cellInfo = SPECIAL_CELLS[p.pos] || { type: "normal", title: `第 ${p.pos} 格` };
+            activeCellType = { ...cellInfo };
+            activeQuestionObj = pickNextQuestion(p.mode);
+            canRetryCurrentQ = true;
+
+            // 設定頂部標籤（絕不顯示試卷題號）
+            document.getElementById("q-player-badge").innerText = `${p.avatar} ${p.name} 的問題`;
+            document.getElementById("q-cell-badge").innerText = `📍 第 ${p.pos} 格：${cellInfo.title || ""}`;
+            document.getElementById("q-diff-badge").innerText = activeQuestionObj.diff === "easy" ? "🌱 基礎題" : "🚀 進階題";
+            document.getElementById("q-diff-badge").className = activeQuestionObj.diff === "easy"
+                ? "px-3 py-1 rounded-xl bg-emerald-100 text-emerald-900 font-bold text-xs"
+                : "px-3 py-1 rounded-xl bg-amber-100 text-amber-900 font-bold text-xs";
+
+            // 根據格子類型顯示規則說明（清楚突顯「向前2格/向後2格」與「答對問題可以減少格數」）
+            const ruleBanner = document.getElementById("q-rule-banner");
+            const ruleText = document.getElementById("q-rule-text");
+
+            if (cellInfo.type === "backward") {
+                ruleBanner.className = "p-3 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-900 font-bold text-sm md:text-base flex items-center gap-2";
+                ruleText.innerText = `⚠️ 環境後退格（原需向後退 ${cellInfo.steps} 格）！只要答對這題，就可以減少後退格數（完全免除後退）！`;
+            } else if (cellInfo.type === "forward") {
+                ruleBanner.className = "p-3 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-900 font-bold text-sm md:text-base flex items-center gap-2";
+                ruleText.innerText = `🌿 環保前進格！答對問題可向前進 ${cellInfo.steps} 格，減少離終點的格數！`;
+            } else if (cellInfo.type === "minigame") {
+                ruleBanner.className = "p-3 rounded-2xl bg-purple-50 border-2 border-purple-300 text-purple-900 font-bold text-sm md:text-base flex items-center gap-2";
+                ruleText.innerText = `🎮 小遊戲格必答題！答對這題常識問題，可以再減少 1 格離終點的距離（向前進 1 格）！`;
+            } else {
+                ruleBanner.className = "p-3 rounded-2xl bg-sky-50 border-2 border-sky-200 text-sky-900 font-bold text-sm md:text-base flex items-center gap-2";
+                const extraMsg = bonusMode === "both"
+                    ? "並減少離終點 1 格距離（向前進 1 格）！"
+                    : "獲得 1 顆環保星章（可在教師設定開啟每格答對再減 1 格）！";
+                ruleText.innerText = `🌟 常識問答格：答對問題可${extraMsg}`;
+            }
+
+            // 顯示題目與圖示
+            document.getElementById("q-visual-icon").innerText = activeQuestionObj.icon || "🌍";
+            document.getElementById("q-text").innerText = activeQuestionObj.q;
+
+            // 每次隨機打亂答案選項順序（絕不固定同一個位置）
+            const correctOpt = activeQuestionObj.ans;
+            const wrongOpts = shuffleArray(activeQuestionObj.options.filter(o => o !== correctOpt));
+            const neededWrongCount = Math.max(1, Math.min(wrongOpts.length, (p.optionCount || 3) - 1));
+            const selectedOptions = shuffleArray([correctOpt, ...wrongOpts.slice(0, neededWrongCount)]);
+
+            const optsContainer = document.getElementById("q-options-container");
+            optsContainer.innerHTML = "";
+
+            selectedOptions.forEach((optText) => {
+                const row = document.createElement("div");
+                row.className = "flex items-stretch gap-2";
+
+                const btn = document.createElement("button");
+                btn.className = "option-btn flex-1 text-left p-4 rounded-2xl bg-white hover:bg-emerald-50 border-2 border-slate-300 hover:border-emerald-500 font-black text-lg md:text-xl text-slate-800 shadow-sm transition flex items-center justify-between";
+                btn.onclick = () => checkAnswer(optText, btn);
+                btn.innerHTML = `
+                    <span class="option-choice-text">${optText}</span>
+                    <span class="text-slate-400 text-sm font-bold">點擊選擇</span>
+                `;
+
+                const speakOptBtn = document.createElement("button");
+                speakOptBtn.type = "button";
+                speakOptBtn.className = "px-4 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-300 font-black text-xl flex items-center justify-center shadow-sm transition";
+                speakOptBtn.title = "粵語朗讀此選項";
+                speakOptBtn.innerText = "🔊";
+                speakOptBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    speakText(optText);
+                };
+
+                row.appendChild(btn);
+                row.appendChild(speakOptBtn);
+                optsContainer.appendChild(row);
+            });
+
+            document.getElementById("q-feedback-box").classList.add("hidden");
+            const modal = document.getElementById("question-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+
+            renderPlayersUI();
+
+            if (autoTTSEnabled) {
+                setTimeout(() => {
+                    speakText(activeQuestionObj.q);
+                }, 250);
+            }
+        }
+
+        function checkAnswer(chosenText, clickedBtn) {
+            const isCorrect = (chosenText === activeQuestionObj.ans);
+            const p = players[currentPlayerIndex];
+            const feedbackBox = document.getElementById("q-feedback-box");
+            const feedbackIcon = document.getElementById("q-feedback-icon");
+            const feedbackTitle = document.getElementById("q-feedback-title");
+            const feedbackDesc = document.getElementById("q-feedback-desc");
+            const retryBtn = document.getElementById("btn-retry-question");
+
+            document.querySelectorAll(".option-btn").forEach(b => {
+                b.disabled = true;
+                if (b.querySelector(".option-choice-text").innerText === activeQuestionObj.ans) {
+                    b.className = "option-btn flex-1 text-left p-4 rounded-2xl bg-emerald-100 border-4 border-emerald-500 font-black text-lg md:text-xl text-emerald-950 shadow-sm flex items-center justify-between";
+                }
+            });
+
+            feedbackBox.classList.remove("hidden");
+
+            if (isCorrect) {
+                playCorrectSound();
+                p.stars += 1;
+                retryBtn.classList.add("hidden");
+                feedbackBox.className = "p-4 rounded-2xl border-2 bg-emerald-50 border-emerald-300 space-y-3";
+                feedbackIcon.innerText = "🎉";
+
+                let rewardExplain = "";
+                if (activeCellType.type === "backward") {
+                    if (canRetryCurrentQ) {
+                        rewardExplain = `你一次就答對了！成功減少全部 ${activeCellType.steps} 格後退格數（完全不用後退）！`;
+                        activeCellType.resolvedMove = 0;
+                    } else {
+                        rewardExplain = `你重試答對了！成功減少 1 格後退格數（只需向後退 1 格）！`;
+                        activeCellType.resolvedMove = -1;
+                    }
+                } else if (activeCellType.type === "forward") {
+                    rewardExplain = `你答對了！獲得環保前進獎勵，再向前進 ${activeCellType.steps} 格（減少離終點格數）！`;
+                    activeCellType.resolvedMove = activeCellType.steps;
+                } else if (activeCellType.type === "minigame") {
+                    rewardExplain = `你答對了！獲得 1 顆環保星章，並減少 1 格距離（向前進 1 格）！`;
+                    activeCellType.resolvedMove = (p.pos < TOTAL_TILES) ? 1 : 0;
+                } else {
+                    if (bonusMode === "both" && p.pos < TOTAL_TILES) {
+                        rewardExplain = `你答對了！獲得 1 顆星，並減少離終點 1 格距離（向前進 1 格）！`;
+                        activeCellType.resolvedMove = 1;
+                    } else {
+                        rewardExplain = `你答對了！獲得 1 顆環保星章！`;
+                        activeCellType.resolvedMove = 0;
+                    }
+                }
+
+                feedbackTitle.innerText = `答對了！${p.name} 做得好！`;
+                feedbackTitle.className = "text-lg md:text-xl font-black text-emerald-900";
+                feedbackDesc.innerText = `${activeQuestionObj.hint}\n🌟 ${rewardExplain}`;
+
+                if (autoTTSEnabled) {
+                    speakText(`答對了！${rewardExplain}`);
+                }
+            } else {
+                playGentleTryAgainSound();
+                clickedBtn.className = "option-btn flex-1 text-left p-4 rounded-2xl bg-amber-100 border-4 border-amber-400 font-black text-lg md:text-xl text-amber-950 shadow-sm flex items-center justify-between";
+
+                feedbackBox.className = "p-4 rounded-2xl border-2 bg-amber-50 border-amber-300 space-y-3";
+                feedbackIcon.innerText = "💡";
+                feedbackTitle.innerText = "差一點點！我們一起看看溫馨提示：";
+                feedbackTitle.className = "text-lg md:text-xl font-black text-amber-900";
+
+                if (activeCellType.type === "backward") {
+                    feedbackDesc.innerText = `${activeQuestionObj.hint}\n（按「再試一次」答對可減少後退格數；若直接繼續則向後退 ${activeCellType.steps} 格。）`;
+                    activeCellType.resolvedMove = -activeCellType.steps;
+                } else {
+                    feedbackDesc.innerText = `${activeQuestionObj.hint}\n（可以按「再試一次」練習正確答案！）`;
+                    activeCellType.resolvedMove = 0;
+                }
+
+                if (canRetryCurrentQ) {
+                    retryBtn.classList.remove("hidden");
+                } else {
+                    retryBtn.classList.add("hidden");
+                }
+
+                if (autoTTSEnabled) {
+                    speakText(`差一點點。提示：${activeQuestionObj.hint}`);
+                }
+            }
+        }
+
+        function allowRetryQuestion() {
+            canRetryCurrentQ = false;
+            document.getElementById("q-feedback-box").classList.add("hidden");
+            document.querySelectorAll(".option-btn").forEach(b => {
+                b.disabled = false;
+                b.className = "option-btn flex-1 text-left p-4 rounded-2xl bg-white hover:bg-emerald-50 border-2 border-slate-300 hover:border-emerald-500 font-black text-lg md:text-xl text-slate-800 shadow-sm transition flex items-center justify-between";
+            });
+            speakText("請再試一次，選出正確的答案。");
+        }
+
+        function finishQuestionStep() {
+            const modal = document.getElementById("question-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+
+            const p = players[currentPlayerIndex];
+            const deltaMove = (activeCellType && activeCellType.resolvedMove) ? activeCellType.resolvedMove : 0;
+
+            if (deltaMove !== 0) {
+                const actionLabel = deltaMove > 0 ? `答對減格獎勵：向前進 ${deltaMove} 格！` : `環境危機：向後退 ${Math.abs(deltaMove)} 格！`;
+                setToast(`${p.avatar} ${p.name} ${actionLabel}`);
+                movePlayerSteps(currentPlayerIndex, deltaMove, () => {
+                    checkWinOrNextTurn();
+                });
+            } else {
+                checkWinOrNextTurn();
+            }
+        }
+
+        /* =========================================================================
+           8. 4款互動小遊戲 (玩完小遊戲後接著回答該格常識題，符合每格必答)
+           ========================================================================= */
+        let mgTeacherTriggered = false;
+        let mgThenAskQuestion = false;
+
+        function openMiniGame(gameIndex, fromTeacher = false, askQuestionAfter = false) {
+            mgTeacherTriggered = fromTeacher;
+            mgThenAskQuestion = askQuestionAfter;
+            const modal = document.getElementById("minigame-modal");
+            const stage = document.getElementById("mg-stage");
+            const completeBar = document.getElementById("mg-complete-bar");
+            completeBar.classList.add("hidden");
+
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+
+            if (gameIndex === 0) {
+                setupMiniGameRecycling(stage);
+            } else if (gameIndex === 1) {
+                setupMiniGameAnimalMatch(stage);
+            } else if (gameIndex === 2) {
+                setupMiniGameSaveEnergy(stage);
+            } else {
+                setupMiniGameAirAndSocial(stage);
+            }
+        }
+
+        // 小遊戲 1：♻️ 廢物分類回收王
+        function setupMiniGameRecycling(stage) {
+            document.getElementById("mg-icon").innerText = "♻️";
+            document.getElementById("mg-title").innerText = "小遊戲：廢物分類回收王";
+            document.getElementById("mg-instruction").innerText = "請點擊畫面上的 4 個「膠樽、鋁罐或廢紙」，把它們放進分類回收箱，解決胡亂棄置膠樽的問題！";
+
+            const items = [
+                { icon: "🧴", name: "膠樽" },
+                { icon: "🥫", name: "鋁罐" },
+                { icon: "📰", name: "廢紙" },
+                { icon: "🍼", name: "膠樽" }
+            ];
+            let collected = 0;
+
+            stage.innerHTML = `
+                <div class="w-full space-y-4 text-center">
+                    <div class="flex flex-wrap items-center justify-center gap-4 py-2" id="recycle-items-row">
+                        ${items.map((it, idx) => `
+                            <button id="rec-item-${idx}" class="px-5 py-4 rounded-2xl bg-white border-4 border-emerald-300 hover:scale-105 shadow-md flex flex-col items-center gap-1 transition">
+                                <span class="text-4xl">${it.icon}</span>
+                                <span class="font-black text-slate-800 text-sm">${it.name}</span>
+                            </button>
+                        `).join("")}
+                    </div>
+                    <div class="mx-auto w-48 py-4 rounded-3xl bg-emerald-600 text-white font-black shadow-inner border-4 border-emerald-400">
+                        <div class="text-4xl">♻️</div>
+                        <div class="text-base mt-1">分類回收箱 (<span id="rec-count">0</span>/4)</div>
+                    </div>
+                </div>
+            `;
+
+            items.forEach((it, idx) => {
+                const btn = document.getElementById(`rec-item-${idx}`);
+                btn.onclick = () => {
+                    btn.disabled = true;
+                    btn.className = "px-5 py-4 rounded-2xl bg-emerald-100 border-2 border-emerald-200 opacity-40 scale-90 flex flex-col items-center gap-1 transition";
+                    collected++;
+                    playStepSound();
+                    document.getElementById("rec-count").innerText = collected;
+                    if (collected >= items.length) {
+                        playCorrectSound();
+                        showMiniGameSuccess("🎉 太棒了！所有膠樽和廢物都放進回收箱了！獎勵向前進 2 格！");
+                    }
+                };
+            });
+
+            if (autoTTSEnabled) speakText("小遊戲：廢物分類回收王。請點擊畫面上的膠樽、鋁罐或廢紙，把它們放進分類回收箱！");
+        }
+
+        // 小遊戲 2：🐾 動物家園大配對
+        function setupMiniGameAnimalMatch(stage) {
+            document.getElementById("mg-icon").innerText = "🐾";
+            document.getElementById("mg-title").innerText = "小遊戲：動物家園大配對";
+            document.getElementById("mg-instruction").innerText = "請幫小動物找到正確的居住環境！點擊正確的自然環境按鈕（完成 3 隻即過關）！";
+
+            const pool = shuffleArray([
+                { animal: "🐪 駱駝", habitat: "🏜️ 沙漠 (黃色)" },
+                { animal: "🦎 沙蜥", habitat: "🏜️ 沙漠 (黃色)" },
+                { animal: "🐻‍❄️ 北極熊", habitat: "❄️ 冰雪覆蓋的陸地 (白色)" },
+                { animal: "🐧 企鵝", habitat: "❄️ 冰雪覆蓋的陸地 (白色)" },
+                { animal: "🐬 海豚", habitat: "🌊 海洋 (藍色)" },
+                { animal: "🐙 八爪魚", habitat: "🌊 海洋 (藍色)" },
+                { animal: "🦁 獅子", habitat: "🌳 有植物生長的陸地 (綠色)" },
+                { animal: "🐿️ 松鼠", habitat: "🌳 有植物生長的陸地 (綠色)" }
+            ]).slice(0, 3);
+
+            const habitats = [
+                "🌊 海洋 (藍色)",
+                "🌳 有植物生長的陸地 (綠色)",
+                "🏜️ 沙漠 (黃色)",
+                "❄️ 冰雪覆蓋的陸地 (白色)"
+            ];
+
+            let currentIdx = 0;
+
+            function renderRound() {
+                const current = pool[currentIdx];
+                stage.innerHTML = `
+                    <div class="w-full space-y-4 text-center">
+                        <div class="text-xs font-black text-purple-700">第 ${currentIdx + 1} / 3 隻動物</div>
+                        <div class="py-3 px-6 rounded-2xl bg-white border-2 border-purple-200 inline-block shadow-sm">
+                            <span class="text-3xl md:text-4xl font-black text-slate-900">${current.animal}</span>
+                            <p class="text-sm font-bold text-slate-500 mt-1">請問牠居住在哪個自然環境？</p>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            ${habitats.map(h => `
+                                <button class="hab-btn p-3 rounded-2xl bg-white hover:bg-purple-50 border-2 border-slate-300 font-black text-base text-slate-800 shadow-sm transition">
+                                    ${h}
+                                </button>
+                            `).join("")}
+                        </div>
+                    </div>
+                `;
+
+                stage.querySelectorAll(".hab-btn").forEach(btn => {
+                    btn.onclick = () => {
+                        if (btn.innerText.trim() === current.habitat) {
+                            playCorrectSound();
+                            currentIdx++;
+                            if (currentIdx >= pool.length) {
+                                showMiniGameSuccess("🎉 動物家園全部配對成功！獎勵向前進 2 格！");
+                            } else {
+                                renderRound();
+                            }
+                        } else {
+                            playGentleTryAgainSound();
+                            btn.className = "hab-btn p-3 rounded-2xl bg-rose-100 border-2 border-rose-300 font-black text-base text-rose-800 opacity-60";
+                        }
+                    };
+                });
+            }
+
+            renderRound();
+            if (autoTTSEnabled) speakText("小遊戲：動物家園大配對。請幫畫面上的動物找到正確的自然環境！");
+        }
+
+        // 小遊戲 3：💡 省水省電小幫手
+        function setupMiniGameSaveEnergy(stage) {
+            document.getElementById("mg-icon").innerText = "💡";
+            document.getElementById("mg-title").innerText = "小遊戲：省水省電小幫手";
+            document.getElementById("mg-instruction").innerText = "房間裏正在浪費水和浪費電！請點擊以下 3 個按鈕，改用環保的做法愛護地球！";
+
+            const tasks = [
+                { id: 0, bad: "💡 白天開著大吊燈 (浪費電)", good: "✅ 已隨手關掉電燈！" },
+                { id: 1, bad: "🛁 用浴缸放滿水浸浴 (浪費水)", good: "✅ 已改用花灑淋浴代替浸浴！" },
+                { id: 2, bad: "🚗 每天坐私家車排廢氣", good: "✅ 已改為乘搭巴士！" }
+            ];
+            let fixed = 0;
+
+            stage.innerHTML = `
+                <div class="w-full space-y-2.5">
+                    ${tasks.map((t, i) => `
+                        <button id="save-task-${i}" class="w-full p-3.5 rounded-2xl bg-amber-100 hover:bg-amber-200 border-2 border-amber-400 font-black text-base md:text-lg text-amber-950 flex items-center justify-between shadow-sm transition">
+                            <span>${t.bad}</span>
+                            <span class="px-3 py-1 rounded-xl bg-white text-xs font-black">點擊改善 👆</span>
+                        </button>
+                    `).join("")}
+                </div>
+            `;
+
+            tasks.forEach((t, i) => {
+                const btn = document.getElementById(`save-task-${i}`);
+                btn.onclick = () => {
+                    btn.disabled = true;
+                    btn.className = "w-full p-3.5 rounded-2xl bg-emerald-100 border-2 border-emerald-400 font-black text-base md:text-lg text-emerald-900 flex items-center justify-between";
+                    btn.innerHTML = `<span>${t.good}</span><span>🌟</span>`;
+                    playStepSound();
+                    fixed++;
+                    if (fixed >= tasks.length) {
+                        playCorrectSound();
+                        showMiniGameSuccess("🎉 成功解決浪費水、浪費電和廢氣問題！獎勵向前進 2 格！");
+                    }
+                };
+            });
+
+            if (autoTTSEnabled) speakText("小遊戲：省水省電小幫手。請點擊三個按鈕，關掉電燈、改用淋浴和乘搭巴士！");
+        }
+
+        // 小遊戲 4：🎈 空氣科學實驗室 & 🤝 融合社交小任務
+        function setupMiniGameAirAndSocial(stage) {
+            document.getElementById("mg-icon").innerText = "🎈";
+            document.getElementById("mg-title").innerText = "小遊戲：空氣實驗與好朋友任務";
+            document.getElementById("mg-instruction").innerText = "我們一起做兩個空氣小實驗，再和身邊的同學完成一個友善小動作！";
+
+            let stepDone = { a: false, b: false, c: false };
+
+            stage.innerHTML = `
+                <div class="w-full space-y-3">
+                    <button id="air-exp-a" class="w-full p-3 rounded-2xl bg-white hover:bg-sky-50 border-2 border-sky-300 font-black text-left flex items-center justify-between transition">
+                        <div>
+                            <div class="text-base text-slate-900">1️⃣ 實驗A：把氣球扭成小狗形狀 🎈➔🐩</div>
+                            <div class="text-xs text-slate-500">點擊看看證明了空氣的甚麼特性？</div>
+                        </div>
+                        <span class="px-3 py-1 rounded-xl bg-sky-100 text-sky-900 text-xs">點擊實驗</span>
+                    </button>
+
+                    <button id="air-exp-b" class="w-full p-3 rounded-2xl bg-white hover:bg-sky-50 border-2 border-sky-300 font-black text-left flex items-center justify-between transition">
+                        <div>
+                            <div class="text-base text-slate-900">2️⃣ 實驗B：鬆開氣球的結對著紙巾 🎈💨🧻</div>
+                            <div class="text-xs text-slate-500">點擊看看紙巾會怎樣？證明了甚麼？</div>
+                        </div>
+                        <span class="px-3 py-1 rounded-xl bg-sky-100 text-sky-900 text-xs">點擊實驗</span>
+                    </button>
+
+                    <button id="air-exp-c" class="w-full p-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border-2 border-amber-300 font-black text-left flex items-center justify-between transition">
+                        <div>
+                            <div class="text-base text-amber-950">3️⃣ 🤝 同伴共融小任務：</div>
+                            <div class="text-xs text-amber-800">請向身邊的同學微笑揮揮手，一起說：「我們要愛護地球！」</div>
+                        </div>
+                        <span class="px-3 py-1 rounded-xl bg-amber-200 text-amber-950 text-xs">完成擊掌 ✋</span>
+                    </button>
+                </div>
+            `;
+
+            function checkAllDone() {
+                if (stepDone.a && stepDone.b && stepDone.c) {
+                    playCorrectSound();
+                    showMiniGameSuccess("🎉 空氣實驗與同伴合作任務都完成了！獎勵向前進 2 格！");
+                }
+            }
+
+            document.getElementById("air-exp-a").onclick = function() {
+                this.disabled = true;
+                this.className = "w-full p-3 rounded-2xl bg-emerald-100 border-2 border-emerald-400 font-black text-left flex items-center justify-between";
+                this.innerHTML = `<div><div class="text-base text-emerald-950">🐩 氣球變成小狗了！</div><div class="text-xs text-emerald-800">證明了：空氣「沒有固定形狀」！</div></div><span>✅</span>`;
+                playStepSound();
+                speakText("氣球扭成小狗形狀，證明了空氣沒有固定形狀。");
+                stepDone.a = true;
+                checkAllDone();
+            };
+
+            document.getElementById("air-exp-b").onclick = function() {
+                this.disabled = true;
+                this.className = "w-full p-3 rounded-2xl bg-emerald-100 border-2 border-emerald-400 font-black text-left flex items-center justify-between";
+                this.innerHTML = `<div><div class="text-base text-emerald-950">🧻 紙巾被吹起了！</div><div class="text-xs text-emerald-800">證明了：空氣「會流動」！</div></div><span>✅</span>`;
+                playStepSound();
+                speakText("紙巾被吹起，證明了空氣會流動。");
+                stepDone.b = true;
+                checkAllDone();
+            };
+
+            document.getElementById("air-exp-c").onclick = function() {
+                this.disabled = true;
+                this.className = "w-full p-3 rounded-2xl bg-emerald-100 border-2 border-emerald-400 font-black text-left flex items-center justify-between";
+                this.innerHTML = `<div><div class="text-base text-emerald-950">🤝 好朋友合作成功！</div><div class="text-xs text-emerald-800">「我們要愛護地球！」</div></div><span>🌟</span>`;
+                playStepSound();
+                speakText("太棒了！我們要愛護地球！");
+                stepDone.c = true;
+                checkAllDone();
+            };
+
+            if (autoTTSEnabled) speakText("請點擊三個按鈕，完成兩個空氣實驗，並向身邊的同學微笑揮揮手！");
+        }
+
+        function showMiniGameSuccess(msg) {
+            const bar = document.getElementById("mg-complete-bar");
+            document.getElementById("mg-complete-text").innerText = mgThenAskQuestion
+                ? "🎉 完成小遊戲！獲得 1 顆星章，現在進入本格的常識問答！"
+                : msg;
+            bar.classList.remove("hidden");
+            if (autoTTSEnabled) speakText(document.getElementById("mg-complete-text").innerText);
+        }
+
+        function closeMiniGame(giveReward) {
+            const modal = document.getElementById("minigame-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+
+            const p = players[currentPlayerIndex];
+            if (giveReward) p.stars += 1;
+            renderPlayersUI();
+
+            // 如果是因為走到小遊戲格 (4, 8, 12, 16) 觸發，玩完小遊戲後打開該格的常識問答，確保「每一個格都要回答問題」
+            if (mgThenAskQuestion) {
+                mgThenAskQuestion = false;
+                setTimeout(() => {
+                    openQuestionForCurrentCell();
+                }, 300);
+                return;
+            }
+
+            if (!mgTeacherTriggered) {
+                checkWinOrNextTurn();
+            }
+        }
+
+        /* =========================================================================
+           9. 換下一位同學與第 20 格終點勝利判定
+           ========================================================================= */
+        function checkWinOrNextTurn() {
+            const p = players[currentPlayerIndex];
+            if (p.pos >= TOTAL_TILES) {
+                playCelebrationSound();
+                showVictoryModal(p);
+                return;
+            }
+
+            // 進入視覺流程第 4 步：換下一位同學
+            setVisualStep(4);
+            setTimeout(() => {
+                currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+                const nextP = players[currentPlayerIndex];
+                renderPlayersUI();
+                setVisualStep(1);
+
+                const rollBtn = document.getElementById("btn-roll");
+                rollBtn.disabled = false;
+                rollBtn.classList.remove("opacity-60");
+                rollBtn.classList.add("gentle-pulse");
+                document.getElementById("dice-result-text").innerText = `現在請 ${nextP.name} 按下方按鈕擲骰子！`;
+                setToast(`👉 換下一位同學：輪到 ${nextP.avatar} ${nextP.name}！`);
+                isBusy = false;
+            }, 650);
+        }
+
+        function showVictoryModal(winner) {
+            const modal = document.getElementById("dialog-modal");
+            document.getElementById("dialog-icon").innerText = "🏆";
+            document.getElementById("dialog-title").innerText = `恭喜 ${winner.avatar} ${winner.name} 到達第 20 格終點！`;
+            document.getElementById("dialog-message").innerText = `三位同學都表現得非常出色，學會了地球表面、水、空氣、動物家園和愛護地球的常識！若 40 分鐘課堂還有時間，可以按「繼續溫習答題」挑戰剩餘題庫，或按「再玩一局」！`;
+            document.getElementById("dialog-buttons").innerHTML = `
+                <button onclick="closeDialogAndContinue()" class="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-black">
+                    退回第17格繼續溫習
+                </button>
+                <button onclick="resetAllGame()" class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow">
+                    再玩一局 🔄
+                </button>
+            `;
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+            if (autoTTSEnabled) {
+                speakText(`恭喜 ${winner.name} 到達第 20 格終點！大家都是最棒的地球小衛士！`);
+            }
+        }
+
+        function closeDialogAndContinue() {
+            const modal = document.getElementById("dialog-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+            players[currentPlayerIndex].pos = 17; // 退回第 17 格讓 40 分鐘課堂可繼續抽題遊玩
+            renderBoard();
+            checkWinOrNextTurn();
+        }
+
+        /* =========================================================================
+           10. 教師控制台輔助函式
+           ========================================================================= */
+        function toggleTeacherPanel() {
+            const panel = document.getElementById("teacher-panel");
+            panel.classList.toggle("hidden");
+        }
+
+        function updatePlayerName(idx, newName) {
+            if (newName && newName.trim()) {
+                players[idx].name = newName.trim();
+                renderPlayersUI();
+            }
+        }
+
+        function updatePlayerMode(idx, newMode) {
+            players[idx].mode = newMode;
+            renderPlayersUI();
+        }
+
+        function updatePlayerOptionCount(idx, countStr) {
+            players[idx].optionCount = parseInt(countStr, 10) || 3;
+            renderPlayersUI();
+        }
+
+        function adjustPlayerPos(idx, delta) {
+            players[idx].pos = Math.min(TOTAL_TILES, Math.max(1, players[idx].pos + delta));
+            renderBoard();
+            renderPlayersUI();
+        }
+
+        function updateDiceMax(val) {
+            diceMax = parseInt(val, 10) || 3;
+            setToast(`🎲 骰子點數上限已設定為 1 至 ${diceMax} 點`);
+        }
+
+        function updateBonusMode(val) {
+            bonusMode = val;
+        }
+
+        function toggleAutoTTS(checked) {
+            autoTTSEnabled = checked;
+        }
+
+        function selectVoice(uri) {
+            selectedVoiceURI = uri;
+            speakText("粵語語音測試：我們要愛護地球。");
+        }
+
+        function triggerRandomQuestion() {
+            openQuestionForCurrentCell();
+        }
+
+        function resetGameConfirm() {
+            const modal = document.getElementById("dialog-modal");
+            document.getElementById("dialog-icon").innerText = "🔄";
+            document.getElementById("dialog-title").innerText = "確定要重新開始嗎？";
+            document.getElementById("dialog-message").innerText = "所有玩家的棋子將回到第 1 格起點，並重新洗牌 100 道常識題庫。";
+            document.getElementById("dialog-buttons").innerHTML = `
+                <button onclick="document.getElementById('dialog-modal').classList.add('hidden'); document.getElementById('dialog-modal').classList.remove('flex');" class="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-black">
+                    取消
+                </button>
+                <button onclick="resetAllGame()" class="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black shadow">
+                    確定重置
+                </button>
+            `;
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+
+        function resetAllGame() {
+            const modal = document.getElementById("dialog-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+
+            players.forEach(p => {
+                p.pos = 1;
+                p.stars = 0;
+            });
+            currentPlayerIndex = 0;
+            usedQuestionIndices.clear();
+            isBusy = false;
+
+            const rollBtn = document.getElementById("btn-roll");
+            rollBtn.disabled = false;
+            rollBtn.classList.remove("opacity-60");
+            rollBtn.classList.add("gentle-pulse");
+
+            setVisualStep(1);
+            renderBoard();
+            renderPlayersUI();
+            setToast("🔄 遊戲已重新開始！請星星同學按「擲骰子」。");
+        }
+
+        function setToast(msg) {
+            const el = document.getElementById("last-action-toast");
+            if (el) el.innerText = msg;
+        }
+
+        // 初始化啟動遊戲
+        window.onload = function () {
+            renderBoard();
+            renderPlayersUI();
+            renderTeacherPlayerConfigs();
+            setVisualStep(1);
+            updateClassTimerDisplay();
+        };
+    </script>
+</body>
+</html>
